@@ -1,0 +1,80 @@
+background: "#000000"
+
+rain:
+  collision: true
+  intensity: 100
+  character: "│"
+  colors:
+    - [0.50, "#FFFFFF"]
+    - [0.50, "#8747FF"]
+  speeds:
+    - [0.20, 21]
+    - [0.20, 31]
+    - [0.20, 41]
+    - [0.20, 51]
+    - [0.20, 61]
+  lengths:
+    - [0.70, 5]
+    - [0.25, 15]
+    - [0.05, 25]
+
+boxes:
+  border: single
+  border_color: "#FFFFFF"
+  text_color: "#FFFFFF"
+  accent_color: "#8747FF"
+  padding:
+    horizontal: 3
+    vertical: 1
+
+  items:
+    - type: logo
+      logo: macos3
+      colors:
+        - "#FFFFFF"
+        - "#5DFF9C"
+        - "#8747FF"
+        - "#FF5681"
+      position:
+        horizontal: -42
+        vertical: -12
+
+    - type: text
+      text: "Introducing Dripfetch | 0.1.0"
+      colors:
+        text: "#FFFFFF"
+        title: "#8747FF"
+        line: "#8747FF"
+      position:
+        horizontal: 4
+        vertical: -17
+
+
+
+    - type: sysinfo
+      colors:
+        text: "#FFFFFF"
+        title: "#8747FF"
+        line: "#8747FF"
+      position:
+        horizontal: 28
+        vertical: 3
+
+    - type: clock
+      position:
+        horizontal: -40
+        vertical: 17
+      clock_style: double
+      clock_size: medium
+      clock_24h: true
+      show_seconds: false
+      show_am_pm: false
+      blink_colon: true
+      show_date: true
+
+    - type: weather
+      location: Tehran
+      units: metric
+      position:
+        horizontal: -39
+        vertical: 5
