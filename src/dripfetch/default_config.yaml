@@ -1,80 +1,204 @@
+# Background color of the entire terminal.
+# Accepts a hexadecimal RGB/RGBA color.
 background: "#000000"
 
+# Animated falling rain.
 rain:
+  # When enabled, raindrops stop when they reach a box.
   collision: true
-  intensity: 100
+
+  # Number of raindrops spawned into the terminal.
+  # Higher values create denser rain and more CPU usage.
+  intensity: 250
+
+  # Character used to render each raindrop.
   character: "│"
+
+  # Rain colors and their relative probabilities.
+  # Format: [probability, color]
+  # Probabilities should add up to 1.0.
   colors:
     - [0.50, "#FFFFFF"]
     - [0.50, "#8747FF"]
+
+  # Rain movement speeds and their relative probabilities.
+  # The value is the delay in milliseconds between movement steps.
+  # Lower values = faster rain.
+  # Format: [probability, delay_ms]
   speeds:
     - [0.20, 21]
     - [0.20, 31]
     - [0.20, 41]
     - [0.20, 51]
     - [0.20, 61]
+
+  # Raindrop lengths and their relative probabilities.
+  # Format: [probability, length_in_characters]
   lengths:
     - [0.70, 5]
     - [0.25, 15]
     - [0.05, 25]
 
+
+# Configuration shared by all boxes.
 boxes:
+  # Border style used around every box.
+  # Available: single, double.
   border: single
+
+  # Color of box borders.
   border_color: "#FFFFFF"
+
+  # Default color for normal box text.
   text_color: "#FFFFFF"
+
+  # Default accent color used by boxes for titles/highlights.
   accent_color: "#8747FF"
+
+  # Space between a box border and its content.
   padding:
+    # Horizontal padding on the left and right.
     horizontal: 3
+
+    # Vertical padding above and below the content.
     vertical: 1
 
+  # Individual boxes displayed by Dripfetch.
   items:
+
+    # ─────────────────────────────────────────
+    # LOGO
+    # ─────────────────────────────────────────
+
     - type: logo
-      logo: macos3
+
+      # Logo to display.
+      # If omitted, Dripfetch automatically detects the operating system
+      # and uses a matching logo when one is available.
+      #
+      # To force a specific logo, uncomment this:
+      # logo: arch
+
+      # Colors available to the logo.
+      # Logo files can reference these colors using $1, $2, $3, etc.
       colors:
-        - "#FFFFFF"
-        - "#5DFF9C"
-        - "#8747FF"
-        - "#FF5681"
-      position:
-        horizontal: -42
-        vertical: -12
+        - "#3B82FF"
+        - "#52E6A3"
+        - "#A855F7"
+        - "#FF4F87"
 
-    - type: text
-      text: "Introducing Dripfetch | 0.1.0"
-      colors:
-        text: "#FFFFFF"
-        title: "#8747FF"
-        line: "#8747FF"
-      position:
-        horizontal: 4
-        vertical: -17
-
-
-
-    - type: sysinfo
-      colors:
-        text: "#FFFFFF"
-        title: "#8747FF"
-        line: "#8747FF"
-      position:
-        horizontal: 28
-        vertical: 3
-
-    - type: clock
-      position:
-        horizontal: -40
-        vertical: 17
-      clock_style: double
-      clock_size: medium
-      clock_24h: true
-      show_seconds: false
-      show_am_pm: false
-      blink_colon: true
-      show_date: true
-
-    - type: weather
-      location: Tehran
-      units: metric
+      # Position of the box relative to the terminal center.
+      # Positive horizontal = right.
+      # Negative horizontal = left.
+      # Positive vertical = down.
+      # Negative vertical = up.
       position:
         horizontal: -39
-        vertical: 5
+        vertical: -7
+
+
+    # ─────────────────────────────────────────
+    # TEXT
+    # ─────────────────────────────────────────
+
+    - type: text
+
+      # Text displayed inside the box.
+      text: "Introducing Dripfetch | 0.1.0"
+
+      # Colors used by the text box.
+      # text  = normal text
+      # title = section/title text
+      # line  = box/tree/border characters
+      colors:
+        text: "#FFFFFF"
+        title: "#8747FF"
+        line: "#8747FF"
+
+      # Position relative to the terminal center.
+      position:
+        horizontal: 6
+        vertical: -15
+
+
+    # ─────────────────────────────────────────
+    # SYSTEM INFORMATION
+    # ─────────────────────────────────────────
+
+    - type: sysinfo
+
+      # Colors used by the system information box.
+      # text  = system information values
+      # title = section titles
+      # line  = tree/box characters
+      colors:
+        text: "#FFFFFF"
+        title: "#8747FF"
+        line: "#8747FF"
+
+      # Position relative to the terminal center.
+      position:
+        horizontal: 24
+        vertical: 4
+
+
+    # ─────────────────────────────────────────
+    # CLOCK
+    # ─────────────────────────────────────────
+
+    - type: clock
+
+      # Position relative to the terminal center.
+      position:
+        horizontal: -33
+        vertical: 12
+
+      # Clock border style.
+      # Available: single, double.
+      clock_style: double
+
+      # Clock size.
+      # Available: medium, big.
+      clock_size: medium
+
+      # Use 24-hour time instead of 12-hour time.
+      clock_24h: true
+
+      # Display seconds.
+      show_seconds: false
+
+      # Display AM/PM when using 12-hour time.
+      show_am_pm: false
+
+      # Animate the colon between hours and minutes.
+      blink_colon: true
+
+      # Display the current date below the clock.
+      show_date: true
+
+
+    # ─────────────────────────────────────────
+    # WEATHER
+    # ─────────────────────────────────────────
+
+    # Weather is disabled by default.
+    # Remove the '#' characters below to enable it.
+
+    # - type: weather
+
+      # Location used for the weather forecast.
+      # Example:
+      # location: Tehran
+
+      # Temperature unit.
+      # Available: metric, imperial.
+      # metric = Celsius / km/h
+      # imperial = Fahrenheit / mph
+
+    #   location: Tehran
+    #   units: metric
+
+      # Position relative to the terminal center.
+    #   position:
+    #     horizontal: 2
+    #     vertical: -12
