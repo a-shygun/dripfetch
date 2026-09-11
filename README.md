@@ -6,6 +6,7 @@ A customizable terminal system information display with animated rain.
 
 The entire interface is configured through a YAML file, allowing the layout and appearance to be changed without modifying the source code.
 
+![dripfetch screenshot](dripfetch.png)
 ## Features
 
 - Animated terminal rain
