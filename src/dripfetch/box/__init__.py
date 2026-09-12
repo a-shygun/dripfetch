@@ -1,5 +1,11 @@
-from .base import BaseBox
-from .borders import Border
-from .manager import Box
+from .manager import BaseBox, Border, BoxColors, BoxManager
 
-__all__ = ["BaseBox", "Border", "Box"]
+Box = BoxManager
+
+__all__ = [
+    "BaseBox",
+    "Border",
+    "BoxColors",
+    "BoxManager",
+    "Box",
+]

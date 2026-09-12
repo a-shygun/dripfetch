@@ -1,7 +1,5 @@
 import time
-
-from ..base import BaseBox
-
+from ..manager import BaseBox
 DIGITS = {
     "single": {
         "medium": {
@@ -384,104 +382,178 @@ DIGITS = {
         },
     },
 }
-
-
 class ClockBox(BaseBox):
-    def __init__(self, stdscr, config, boxes_config, colors, renderer):
-        super().__init__(stdscr, config, boxes_config, colors, renderer)
-        self.style = config.get("clock_style", "single")
-        self.size = config.get("clock_size", "medium")
-        self.clock_24h = config.get("clock_24h", True)
-        self.show_seconds = config.get("show_seconds", True)
-        self.show_am_pm = config.get("show_am_pm", True)
-        self.blink_colon = config.get("blink_colon", False)
-        self.show_date = config.get("show_date", False)
-
+    def __init__(
+        self,
+        stdscr,
+        config,
+        boxes_config,
+        colors,
+        renderer,
+    ):
+        super().__init__(
+            stdscr,
+            config,
+            boxes_config,
+            colors,
+            renderer,
+        )
+        self.style = config.get(
+            "clock_style",
+            "single",
+        )
+        self.size = config.get(
+            "clock_size",
+            "medium",
+        )
+        self.clock_24h = config.get(
+            "clock_24h",
+            True,
+        )
+        self.show_seconds = config.get(
+            "show_seconds",
+            True,
+        )
+        self.show_am_pm = config.get(
+            "show_am_pm",
+            True,
+        )
+        self.blink_colon = config.get(
+            "blink_colon",
+            False,
+        )
+        self.show_date = config.get(
+            "show_date",
+            False,
+        )
     @staticmethod
     def _blank(pattern):
-        return [" " * len(line) for line in pattern]
-
+        return [
+            " " * len(line)
+            for line in pattern
+        ]
     def _time_text(self, now):
         hour = "%H" if self.clock_24h else "%I"
-        seconds = ":%S" if self.show_seconds else ""
-
-        text = time.strftime(f"{hour}:%M{seconds}", now)
-
+        seconds = ":%%S" if self.show_seconds else ""
+        text = time.strftime(
+            f"{hour}:%M{seconds}",
+            now,
+        )
         if not self.clock_24h and self.show_am_pm:
             text = f"{text[:-2]} {text[-2:]}"
-
         return text
-
     def _patterns(self, text, now):
         digits = DIGITS[self.style][self.size]
-        show_colon = not self.blink_colon or now.tm_sec % 2 == 0
-
-        return [
-            self._blank(digits[":"])
-            if char == ":" and not show_colon
-            else digits.get(char, self._blank(digits["0"]))
-            for char in text
-        ]
-
+        show_colon = (
+            not self.blink_colon
+            or now.tm_sec % 2 == 0
+        )
+        patterns = []
+        for char in text:
+            if char == ":" and not show_colon:
+                patterns.append(
+                    self._blank(digits[":"])
+                )
+                continue
+            patterns.append(
+                digits.get(
+                    char,
+                    self._blank(digits["0"]),
+                )
+            )
+        return patterns
     def _geometry(self, now):
         text = self._time_text(now)
         patterns = self._patterns(text, now)
         spacing = 2 if self.size == "big" else 1
-        width = sum(len(pattern[0]) for pattern in patterns)
-        width += (len(patterns) - 1) * spacing
+        width = 0
+        for pattern in patterns:
+            width += len(pattern[0])
+        width += (
+            len(patterns) - 1
+        ) * spacing
         height = len(patterns[0])
-        date = time.strftime("%A, %b %d %Y", now) if self.show_date else ""
-
-        return text, patterns, spacing, width, height, date
-
+        date = ""
+        if self.show_date:
+            date = time.strftime(
+                "%A, %b %d %Y",
+                now,
+            )
+        return (
+            text,
+            patterns,
+            spacing,
+            width,
+            height,
+            date,
+        )
     def dimensions(self):
-        _, _, _, width, height, date = self._geometry(time.localtime())
-        return width, height + bool(date) * 2
-
-    def draw_content(self, x, y, width, height):
+        (
+            _,
+            _,
+            _,
+            width,
+            height,
+            date,
+        ) = self._geometry(
+            time.localtime()
+        )
+        return (
+            width,
+            height + bool(date) * 2,
+        )
+    def draw_content(
+        self,
+        x,
+        y,
+        width,
+        height,
+    ):
         now = time.localtime()
-
-        text, patterns, spacing, clock_width, clock_height, date = self._geometry(now)
-
-        content_height = clock_height + bool(date) * 2
-        x_start = x + max(0, (width - clock_width) // 2)
-        y_start = y + max(0, (height - content_height) // 2)
-
+        (
+            text,
+            patterns,
+            spacing,
+            clock_width,
+            clock_height,
+            date,
+        ) = self._geometry(now)
+        content_height = (
+            clock_height
+            + bool(date) * 2
+        )
+        x_start = x + max(
+            0,
+            (width - clock_width) // 2,
+        )
+        y_start = y + max(
+            0,
+            (height - content_height) // 2,
+        )
+        offset = 0
         for char_index, char in enumerate(text):
             pattern = patterns[char_index]
-
+            color = self.colors.accent if char == ":" else self.colors.text
             for row, line in enumerate(pattern):
-                offset = sum(
-                    len(patterns[index][0]) + spacing for index in range(char_index)
+                self.renderer.draw(
+                    x_start + offset,
+                    y_start + row,
+                    line,
+                    color,
                 )
-
-                if char == ":":
-                    self.renderer.draw(
-                        x_start + offset,
-                        y_start + row,
-                        line,
-                        self.colors.accent,
-                    )
-                else:
-                    self.renderer.draw(
-                        x_start + offset,
-                        y_start + row,
-                        line,
-                        self.colors.text,
-                    )
-
+            offset += len(pattern[0]) + spacing
         if date:
-            date_x = x + max(0, (width - len(date)) // 2)
-
+            date_x = x + max(
+                0,
+                (width - len(date)) // 2,
+            )
             self.renderer.draw(
                 date_x,
                 y_start + clock_height + 1,
                 date[:width],
                 self.colors.text,
             )
-
     def update(self):
         pass
-
     def close(self):
         pass

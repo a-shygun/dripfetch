@@ -2,18 +2,51 @@ import platform
 import re
 from importlib.resources import files
 
-from ...terminal import parse_color
-from ..base import BaseBox
+from ...app.terminal import parse_color
+from ..manager import BaseBox
 
 
 class LogoBox(BaseBox):
-    def __init__(self, stdscr, config, boxes, colors, renderer):
-        super().__init__(stdscr, config, boxes, colors, renderer)
-        self.config_logo = config.get("logo", "")
-        self.logo = self._detect_logo() or self.config_logo
-        self.logo_colors = [parse_color(color) for color in config.get("colors", [])]
+    def __init__(
+        self,
+        stdscr,
+        config,
+        boxes,
+        colors,
+        renderer,
+    ):
+        super().__init__(
+            stdscr,
+            config,
+            boxes,
+            colors,
+            renderer,
+        )
+
+        self.logo = (
+            self._detect_logo()
+            or config.get("logo", "")
+        )
+
+        self.logo_colors = [
+            parse_color(color)
+            for color in config.get("colors", [])
+        ]
+
         self.lines = self._load_logo()
-        self.parsed_lines = [self._parse_line(line) for line in self.lines]
+
+    def content(self):
+        content = []
+        color = None
+
+        for line in self.lines:
+            parsed_line, color = self._parse_line(
+                line,
+                color,
+            )
+            content.append(parsed_line)
+
+        return content
 
     def _detect_logo(self):
         system = platform.system()
@@ -26,13 +59,18 @@ class LogoBox(BaseBox):
 
         if system == "Linux":
             distro = self._linux_distro()
-            return self._find_logo(distro) if distro else None
+
+            if distro:
+                return self._find_logo(distro)
 
         return None
 
     def _linux_distro(self):
         try:
-            with open("/etc/os-release", encoding="utf-8") as file:
+            with open(
+                "/etc/os-release",
+                encoding="utf-8",
+            ) as file:
                 data = {}
 
                 for line in file:
@@ -40,6 +78,7 @@ class LogoBox(BaseBox):
                     data[key] = value.strip().strip('"')
 
             return data.get("ID", "").lower()
+
         except (FileNotFoundError, OSError):
             return None
 
@@ -47,7 +86,11 @@ class LogoBox(BaseBox):
         if not name:
             return None
 
-        path = files("dripfetch").joinpath("assets", "logos", f"{name}.txt")
+        path = files("dripfetch").joinpath(
+            "assets",
+            "logos",
+            f"{name}.txt",
+        )
 
         if path.is_file():
             return name
@@ -55,16 +98,25 @@ class LogoBox(BaseBox):
         return None
 
     def _load_logo(self):
-        path = files("dripfetch").joinpath("assets", "logos", f"{self.logo}.txt")
+        path = files("dripfetch").joinpath(
+            "assets",
+            "logos",
+            f"{self.logo}.txt",
+        )
 
         if not path.is_file():
             return []
 
-        return path.read_text(encoding="utf-8").splitlines()
+        return path.read_text(
+            encoding="utf-8"
+        ).splitlines()
 
-    def _parse_line(self, line):
-        parts = re.split(r"(\$\d+)", line)
-        color = None
+    def _parse_line(self, line, color):
+        parts = re.split(
+            r"(\$\d+)",
+            line,
+        )
+
         result = []
 
         for part in parts:
@@ -73,35 +125,14 @@ class LogoBox(BaseBox):
 
             if part.startswith("$"):
                 index = int(part[1:]) - 1
-                color = (
-                    self.logo_colors[index]
-                    if 0 <= index < len(self.logo_colors)
-                    else None
-                )
+
+                if 0 <= index < len(self.logo_colors):
+                    color = self.logo_colors[index]
+                else:
+                    color = None
+
                 continue
 
             result.append((part, color))
 
-        return result
-
-    def draw_content(self, x, y, width, height):
-        for row, segments in enumerate(self.parsed_lines):
-            if row >= height:
-                break
-
-            offset = 0
-
-            for text, color in segments:
-                if offset >= width:
-                    break
-
-                text = text[:width - offset]
-                self.renderer.draw(x + offset, y + row, text, color)
-                offset += len(text)
-
-    def dimensions(self):
-        width = max(
-            (sum(len(text) for text, _ in line) for line in self.parsed_lines),
-            default=0,
-        )
-        return width, len(self.parsed_lines)
+        return result, color
