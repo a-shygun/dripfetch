@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dripfetch"
-version = "0.2.0"
+version = "0.2.1"
 description = "A customizable terminal system information display with animated rain."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -32,7 +32,7 @@ dependencies = [
 ]
 
 [project.scripts]
-dripfetch = "dripfetch.cli:main"
+dripfetch = "dripfetch.app.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
