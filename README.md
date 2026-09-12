@@ -63,9 +63,27 @@ A short terminal recording is also available:
 
 # Installation
 
+## Homebrew
+
+Dripfetch is available through the official Dripfetch Homebrew tap:
+
+```bash
+brew tap a-shygun/dripfetch
+brew install dripfetch
+```
+
+To update Dripfetch later:
+
+```bash
+brew update
+brew upgrade dripfetch
+```
+
+---
+
 ## PyPI
 
-The easiest way to install Dripfetch is through PyPI:
+The easiest way to install Dripfetch through Python is PyPI:
 
 ```bash
 pip install dripfetch
@@ -175,6 +193,12 @@ If you installed Dripfetch with `pip`:
 pip uninstall dripfetch
 ```
 
+If you installed it using Homebrew:
+
+```bash
+brew uninstall dripfetch
+```
+
 If you installed it using `install.sh`, run the included uninstall script from the repository:
 
 ```bash
@@ -202,20 +226,6 @@ To also remove your Dripfetch configuration:
 ```bash
 rm -rf ~/.config/dripfetch
 ```
-
----
-
-# Next Update
-
-The next update is planned to expand Dripfetch beyond its current feature set.
-
-Planned improvements include:
-
-- Adding more box types
-- Adding Dripfetch to Homebrew
-- Adding packages for Linux package managers
-- Creating a complete Dripfetch Wiki with detailed documentation
-- Expanding configuration and customization documentation
 
 ---
 
