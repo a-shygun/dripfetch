@@ -1,0 +1,62 @@
+# 01 Neon Matrix — Dripfetch showcase config
+background: '#030A0B'
+rain:
+  collision: false
+  intensity: 150
+  character:
+    - │
+    - ┃
+    - ╎
+  colors:
+    -   - 0.58
+        - '#12F7A0'
+    -   - 0.27
+        - '#00C6FF'
+    -   - 0.15
+        - '#A7FF83'
+  speeds:
+    -   - 0.2
+        - 24
+    -   - 0.25
+        - 34
+    -   - 0.3
+        - 46
+    -   - 0.25
+        - 60
+  lengths:
+    -   - 0.65
+        - 5
+    -   - 0.25
+        - 12
+    -   - 0.1
+        - 20
+boxes:
+  border: titled_double
+  border_color: '#19C984'
+  text_color: '#D6FFE9'
+  accent_color: '#50FFC1'
+  padding:
+    horizontal: 2
+    vertical: 0
+  items:
+    - type: logo
+      logo: android
+      title: NEON
+      position:
+        horizontal: -37
+        vertical: -2
+    - type: sysinfo
+      title: SYSTEM TELEMETRY
+      sections:
+        display: false
+        connectivity: false
+      position:
+        horizontal: 27
+        vertical: 0
+    - type: text
+      title: SESSION
+      text: "DRIPFETCH  /  MATRIX MODE\nMove through the rain."
+      alignment: left
+      position:
+        horizontal: -37
+        vertical: 11

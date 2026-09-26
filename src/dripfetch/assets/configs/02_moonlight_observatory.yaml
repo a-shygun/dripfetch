@@ -1,0 +1,66 @@
+# 02 Moonlight Observatory — Dripfetch showcase config
+background: '#080B18'
+rain:
+  collision: false
+  intensity: 500
+  character:
+    - ·
+    - ⋅
+    - ∙
+  colors:
+    -   - 0.58
+        - '#B8C7FF'
+    -   - 0.27
+        - '#8E77FF'
+    -   - 0.15
+        - '#E9C7FF'
+  speeds:
+    -   - 0.2
+        - 24
+    -   - 0.25
+        - 34
+    -   - 0.3
+        - 46
+    -   - 0.25
+        - 60
+  lengths:
+    -   - 0.65
+        - 5
+    -   - 0.25
+        - 12
+    -   - 0.1
+        - 20
+boxes:
+  border: double
+  border_color: '#7788CC'
+  text_color: '#D9E4FF'
+  accent_color: '#B9A7FF'
+  padding:
+    horizontal: 3
+    vertical: 1
+  items:
+    - type: clock
+      title: LOCAL TIME
+      clock_style: double
+      clock_size: big
+      clock_24h: false
+      show_seconds: true
+      show_am_pm: true
+      blink_colon: true
+      show_date: true
+      position:
+        horizontal: 0
+        vertical: -8
+    - type: calendar
+      title: SKY / CALENDAR
+      starting_day: sunday
+      position:
+        horizontal: -14
+        vertical: 10
+    - type: text
+      title: NIGHT NOTES
+      text: "Look up.\nThe stars are still there."
+      alignment: center
+      position:
+        horizontal: 26
+        vertical: 10

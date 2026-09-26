@@ -10,21 +10,6 @@ from ruamel.yaml.error import YAMLError
 CONFIG_DIR = Path.home() / ".config" / "dripfetch"
 CONFIG_PATH = CONFIG_DIR / "config.yaml"
 COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$")
-BORDER_TYPES = {"single", "double", "none"}
-CLOCK_STYLES = {"single", "double"}
-CLOCK_SIZES = {"medium", "big"}
-
-
-def get_box_types():
-    path = files("dripfetch").joinpath("box", "types")
-    return {
-        item.stem
-        for item in path.iterdir()
-        if item.is_file() and item.suffix == ".py" and item.stem != "__init__"
-    }
-
-
-BOX_TYPES = get_box_types()
 
 
 class ConfigError(ValueError):
@@ -35,11 +20,7 @@ def _yaml():
     yaml = YAML()
     yaml.preserve_quotes = True
     yaml.default_flow_style = False
-    yaml.indent(
-        mapping=2,
-        sequence=4,
-        offset=2,
-    )
+    yaml.indent(mapping=2, sequence=4, offset=2)
     return yaml
 
 
@@ -86,10 +67,7 @@ def _color(value, path):
 def _enum(value, path, choices):
     _string(value, path)
     if value not in choices:
-        _error(
-            path,
-            f"must be one of: {', '.join(sorted(choices))}",
-        )
+        _error(path, f"must be one of: {', '.join(sorted(choices))}")
 
 
 def _weighted_list(value, path, value_type):
@@ -99,337 +77,61 @@ def _weighted_list(value, path, value_type):
     for index, item in enumerate(value):
         item_path = f"{path}[{index}]"
         if not isinstance(item, (list, tuple)) or len(item) != 2:
-            _error(
-                item_path,
-                "must contain exactly two values",
-            )
+            _error(item_path, "must contain exactly two values")
         weight, item_value = item
-        _number(
-            weight,
-            f"{item_path}[0]",
-        )
+        _number(weight, f"{item_path}[0]")
         if weight <= 0:
-            _error(
-                f"{item_path}[0]",
-                "must be greater than 0",
-            )
+            _error(f"{item_path}[0]", "must be greater than 0")
         total += weight
         if value_type == "color":
-            _color(
-                item_value,
-                f"{item_path}[1]",
-            )
+            _color(item_value, f"{item_path}[1]")
         elif value_type == "integer":
-            _integer(
-                item_value,
-                f"{item_path}[1]",
-            )
+            _integer(item_value, f"{item_path}[1]")
         else:
-            _number(
-                item_value,
-                f"{item_path}[1]",
-            )
+            _number(item_value, f"{item_path}[1]")
     if abs(total - 1) > 0.001:
-        _error(
-            path,
-            "weights must sum to 1",
-        )
+        _error(path, "weights must sum to 1")
 
 
 def _characters(value, path):
     if isinstance(value, str):
         if not value:
-            _error(
-                path,
-                "must not be empty",
-            )
+            _error(path, "must not be empty")
         return
     if not isinstance(value, list) or not value:
-        _error(
-            path,
-            "must be a non-empty string or list of strings",
-        )
+        _error(path, "must be a non-empty string or list of strings")
     for index, character in enumerate(value):
         character_path = f"{path}[{index}]"
-        _string(
-            character,
-            character_path,
-        )
+        _string(character, character_path)
         if not character:
-            _error(
-                character_path,
-                "must not be empty",
-            )
-
-
-def _position(value, path):
-    value = _mapping(value, path)
-    for key in ("horizontal", "vertical"):
-        if key in value:
-            _integer(
-                value[key],
-                f"{path}.{key}",
-            )
-
-
-def _validate_text(item, path):
-    if "text" in item:
-        _string(
-            item["text"],
-            f"{path}.text",
-        )
-
-
-def _validate_clock(item, path):
-    for key, choices in (
-        ("clock_style", CLOCK_STYLES),
-        ("clock_size", CLOCK_SIZES),
-    ):
-        if key in item:
-            _enum(
-                item[key],
-                f"{path}.{key}",
-                choices,
-            )
-    for key in (
-        "clock_24h",
-        "show_seconds",
-        "show_am_pm",
-        "blink_colon",
-        "show_date",
-    ):
-        if key in item:
-            _bool(
-                item[key],
-                f"{path}.{key}",
-            )
-
-
-def _validate_sysinfo(item, path):
-    if "colors" in item:
-        colors = _mapping(
-            item["colors"],
-            f"{path}.colors",
-        )
-        for key in ("text", "title", "line"):
-            if key in colors:
-                _color(
-                    colors[key],
-                    f"{path}.colors.{key}",
-                )
-    if "sections" in item:
-        sections = _mapping(
-            item["sections"],
-            f"{path}.sections",
-        )
-        valid_sections = {
-            "system",
-            "display",
-            "hardware",
-            "disk",
-            "connectivity",
-        }
-        for key, value in sections.items():
-            if key not in valid_sections:
-                _error(
-                    f"{path}.sections.{key}",
-                    f"must be one of: {', '.join(sorted(valid_sections))}",
-                )
-            _bool(
-                value,
-                f"{path}.sections.{key}",
-            )
-
-
-def _validate_logo(item, path):
-    if "logo" in item:
-        logo = _string(
-            item["logo"],
-            f"{path}.logo",
-        )
-        if not logo:
-            _error(
-                f"{path}.logo",
-                "must not be empty",
-            )
-    if "colors" not in item:
-        return
-    colors = item["colors"]
-    if not isinstance(colors, list) or not colors:
-        _error(
-            f"{path}.colors",
-            "must be a non-empty list",
-        )
-    for index, color in enumerate(colors):
-        _color(
-            color,
-            f"{path}.colors[{index}]",
-        )
-
-
-def _validate_weather(item, path):
-    if "location" in item:
-        location = _string(
-            item["location"],
-            f"{path}.location",
-        )
-        if not location:
-            _error(
-                f"{path}.location",
-                "must not be empty",
-            )
-    if "latitude" in item:
-        latitude = _number(
-            item["latitude"],
-            f"{path}.latitude",
-        )
-        if not -90 <= latitude <= 90:
-            _error(
-                f"{path}.latitude",
-                "must be between -90 and 90",
-            )
-    if "longitude" in item:
-        longitude = _number(
-            item["longitude"],
-            f"{path}.longitude",
-        )
-        if not -180 <= longitude <= 180:
-            _error(
-                f"{path}.longitude",
-                "must be between -180 and 180",
-            )
-    if "location" not in item and ("latitude" not in item or "longitude" not in item):
-        _error(
-            path,
-            "requires location or latitude and longitude",
-        )
-
-
-def _validate_box(item, index):
-    path = f"boxes.items[{index}]"
-    item = _mapping(item, path)
-    box_type = item.get("type", "text")
-    _enum(
-        box_type,
-        f"{path}.type",
-        BOX_TYPES,
-    )
-    if "border" in item:
-        _enum(
-            item["border"],
-            f"{path}.border",
-            BORDER_TYPES,
-        )
-    if "position" in item:
-        _position(
-            item["position"],
-            f"{path}.position",
-        )
-    validators = {
-        "text": _validate_text,
-        "clock": _validate_clock,
-        "sysinfo": _validate_sysinfo,
-        "logo": _validate_logo,
-        "weather": _validate_weather,
-    }
-    validator = validators.get(box_type)
-    if validator:
-        validator(item, path)
+            _error(character_path, "must not be empty")
 
 
 def validate_config(config):
-    config = _mapping(
-        config,
-        "config",
-    )
+    config = _mapping(config, "config")
     if "background" in config:
-        _color(
-            config["background"],
-            "background",
-        )
-    rain = _mapping(
-        config.get("rain", {}),
-        "rain",
-    )
+        _color(config["background"], "background")
+
+    rain = _mapping(config.get("rain", {}), "rain")
     if "collision" in rain:
-        _bool(
-            rain["collision"],
-            "rain.collision",
-        )
+        _bool(rain["collision"], "rain.collision")
     if "intensity" in rain:
-        intensity = _integer(
-            rain["intensity"],
-            "rain.intensity",
-        )
+        intensity = _integer(rain["intensity"], "rain.intensity")
         if intensity < 0:
-            _error(
-                "rain.intensity",
-                "must be greater than or equal to 0",
-            )
+            _error("rain.intensity", "must be greater than or equal to 0")
     if "character" in rain:
-        _characters(
-            rain["character"],
-            "rain.character",
-        )
+        _characters(rain["character"], "rain.character")
     for key, value_type in (
         ("colors", "color"),
         ("speeds", "integer"),
         ("lengths", "integer"),
     ):
         if key in rain:
-            _weighted_list(
-                rain[key],
-                f"rain.{key}",
-                value_type,
-            )
-    boxes = _mapping(
-        config.get("boxes", {}),
-        "boxes",
-    )
-    if "border" in boxes:
-        _enum(
-            boxes["border"],
-            "boxes.border",
-            BORDER_TYPES,
-        )
-    for key in (
-        "border_color",
-        "text_color",
-        "accent_color",
-    ):
-        if key in boxes:
-            _color(
-                boxes[key],
-                f"boxes.{key}",
-            )
-    if "padding" in boxes:
-        padding = _mapping(
-            boxes["padding"],
-            "boxes.padding",
-        )
-        for key in ("horizontal", "vertical"):
-            if key not in padding:
-                continue
-            value = _integer(
-                padding[key],
-                f"boxes.padding.{key}",
-            )
-            if value < 0:
-                _error(
-                    f"boxes.padding.{key}",
-                    "must be greater than or equal to 0",
-                )
-    items = boxes.get("items", [])
-    if not isinstance(items, list):
-        _error(
-            "boxes.items",
-            "must be a list",
-        )
-    for index, item in enumerate(items):
-        _validate_box(
-            item,
-            index,
-        )
+            _weighted_list(rain[key], f"rain.{key}", value_type)
+    from ..box.manager import validate_box_config  # noqa: PLC0415
+
+    validate_box_config(config)
+
     return config
 
 
@@ -437,22 +139,16 @@ def _parse(text, path):
     try:
         config = _yaml().load(text)
     except YAMLError as exc:
-        raise ConfigError(
-            f"{path}: invalid YAML: {exc}",
-        ) from exc
+        raise ConfigError(f"{path}: invalid YAML: {exc}") from exc
     if config is None:
-        raise ConfigError(
-            f"{path}: configuration is empty",
-        )
+        raise ConfigError(f"{path}: configuration is empty")
     return validate_config(config)
 
 
 def _default_config():
     return (
         files("dripfetch")
-        .joinpath(
-            "default_config.yaml",
-        )
+        .joinpath("assets", "configs", "0_default.yaml")
         .read_text(encoding="utf-8")
     )
 
@@ -460,10 +156,7 @@ def _default_config():
 def save_config(config, path=CONFIG_PATH):
     path = Path(path).expanduser()
     validate_config(config)
-    path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    path.parent.mkdir(parents=True, exist_ok=True)
     mode = path.stat().st_mode if path.exists() else 0o644
     temporary = None
     try:
@@ -476,25 +169,13 @@ def save_config(config, path=CONFIG_PATH):
             delete=False,
         ) as file:
             temporary = Path(file.name)
-            os.chmod(
-                temporary,
-                mode & 0o777,
-            )
-            _yaml().dump(
-                config,
-                file,
-            )
+            os.chmod(temporary, mode & 0o777)
+            _yaml().dump(config, file)
             file.flush()
             os.fsync(file.fileno())
-        os.replace(
-            temporary,
-            path,
-        )
+        os.replace(temporary, path)
         try:
-            directory = os.open(
-                path.parent,
-                os.O_RDONLY,
-            )
+            directory = os.open(path.parent, os.O_RDONLY)
             try:
                 os.fsync(directory)
             finally:
@@ -503,43 +184,27 @@ def save_config(config, path=CONFIG_PATH):
             pass
     finally:
         if temporary:
-            temporary.unlink(
-                missing_ok=True,
-            )
+            temporary.unlink(missing_ok=True)
 
 
 def create_default_config(force=False):
     if CONFIG_PATH.exists() and not force:
         return False
     save_config(
-        _parse(
-            _default_config(),
-            "default_config.yaml",
-        ),
+        _parse(_default_config(), "assets/configs/0_default.yaml"),
         CONFIG_PATH,
     )
     return True
 
 
 def load_config(path=None):
-    path = Path(
-        path or CONFIG_PATH,
-    ).expanduser()
+    path = Path(path or CONFIG_PATH).expanduser()
     if not path.exists():
         if path != CONFIG_PATH:
-            raise FileNotFoundError(
-                f"Configuration file not found: {path}",
-            )
+            raise FileNotFoundError(f"Configuration file not found: {path}")
         create_default_config()
     try:
-        text = path.read_text(
-            encoding="utf-8",
-        )
+        text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        raise ConfigError(
-            f"{path}: cannot read configuration: {exc}",
-        ) from exc
-    return _parse(
-        text,
-        path,
-    )
+        raise ConfigError(f"{path}: cannot read configuration: {exc}") from exc
+    return _parse(text, path)

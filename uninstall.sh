@@ -29,15 +29,17 @@ do
     fi
 done
 
-find "$INSTALL_DIR" \
-    -type d \
-    -name "__pycache__" \
-    -prune \
-    -exec rm -rf {} +
+if [ -d "$INSTALL_DIR" ]; then
+    find "$INSTALL_DIR" \
+        -type d \
+        -name "__pycache__" \
+        -prune \
+        -exec rm -rf {} +
+fi
 
 echo
 echo "DripFetch has been uninstalled."
 echo
 echo "Preserved:"
-echo "Application source: $INSTALL_DIR"
 echo "Configuration: $HOME/.config/dripfetch/config.yaml"
+echo "Repository checkout: unchanged"

@@ -1,0 +1,72 @@
+# 08 Arcade Cabinet — Dripfetch showcase config
+background: '#10051B'
+rain:
+  collision: false
+  intensity: 200
+  character:
+    - █
+    - ▓
+    - ▒
+    - ░
+  colors:
+    -   - 0.58
+        - '#FF41F2'
+    -   - 0.27
+        - '#4AF5FF'
+    -   - 0.15
+        - '#FFE94A'
+  speeds:
+    -   - 0.2
+        - 24
+    -   - 0.25
+        - 34
+    -   - 0.3
+        - 46
+    -   - 0.25
+        - 60
+  lengths:
+    -   - 0.65
+        - 5
+    -   - 0.25
+        - 12
+    -   - 0.1
+        - 20
+boxes:
+  border: titled_double
+  border_color: '#EA2FE0'
+  text_color: '#FFE3FF'
+  accent_color: '#58F6FF'
+  padding:
+    horizontal: 2
+    vertical: 0
+  items:
+    - type: text
+      title: PLAYER 1
+      text: "DRIPFETCH\n\nINSERT COFFEE\nPRESS ANY KEY"
+      alignment: center
+      position:
+        horizontal: 30
+        vertical: 13
+    - type: clock
+      title: GAME TIME
+      clock_style: double
+      clock_size: small
+      clock_24h: true
+      show_seconds: true
+      show_date: false
+      position:
+        horizontal: 39
+        vertical: -14
+    - type: sysinfo
+      title: HOST OVERVIEW
+      sections:
+        display: false
+      position:
+        horizontal: -38
+        vertical: 0
+    - type: logo
+      logo: almalinux
+      title: alma
+      position:
+        horizontal: 44
+        vertical: -1

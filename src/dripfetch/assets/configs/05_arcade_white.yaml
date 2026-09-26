@@ -1,0 +1,75 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Dripfetch — 08 · Arcade Cabinet (White / RGB remix)
+# Bright white cabinet with tri-color RGB rain.
+# ═══════════════════════════════════════════════════════════════════════
+
+background: "#DDDDDD"
+
+rain:
+  collision: false
+  intensity: 200
+  character:
+    - "█"
+    - "▓"
+    - "▒"
+    - "░"
+  colors:
+    - [0.5, "#FF0000"]
+    - [0.5, "#2979FF"]
+  speeds:
+    - [0.20, 24]
+    - [0.25, 34]
+    - [0.30, 46]
+    - [0.25, 60]
+  lengths:
+    - [0.65, 5]
+    - [0.25, 12]
+    - [0.10, 20]
+
+boxes:
+  border: titled_double
+  border_color: "#1A1A1A"
+  text_color: "#1A1A1A"
+  accent_color: "#2979FF"
+  padding:
+    horizontal: 2
+    vertical: 0
+
+  items:
+    - type: text
+      title: PLAYER 1
+      text: |
+        DRIPFETCH
+
+        INSERT COFFEE
+        PRESS ANY KEY
+      alignment: center
+      position:
+        horizontal: 30
+        vertical: 13
+
+    - type: clock
+      title: GAME TIME
+      clock_style: double
+      clock_size: small
+      clock_24h: true
+      show_seconds: true
+      show_date: false
+      position:
+        horizontal: 31
+        vertical: -14
+
+    - type: sysinfo
+      title: HOST OVERVIEW
+      sections:
+        display: false
+      position:
+        horizontal: -38
+        vertical: 0
+
+    - type: logo
+      logo: ubuntu
+      title: ubuntu
+      position:
+        horizontal: 30
+        vertical: -1

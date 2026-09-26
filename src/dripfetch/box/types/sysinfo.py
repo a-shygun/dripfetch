@@ -1,6 +1,7 @@
 import ipaddress
 import os
 import platform
+import re
 import shutil
 import socket
 import subprocess
@@ -9,7 +10,7 @@ import time
 
 import psutil
 
-from ..manager import BaseBox
+from ..base import BaseBox
 
 
 class SysInfoBox(BaseBox):
@@ -74,15 +75,33 @@ class SysInfoBox(BaseBox):
             "cpu_cores": "Loading...",
         }
 
-        self.lines = []
-
-        self._initialize_data()
+        self.lines = ["Loading..."]
 
         self.thread = threading.Thread(
             target=self._refresh_loop,
             daemon=True,
         )
         self.thread.start()
+
+    # ------------------------------------------------------------------
+    # Plug-and-play config validator (called by config.py automatically)
+    # ------------------------------------------------------------------
+    @classmethod
+    def validate_config(cls, item, path):
+        from ...app.config import _bool, _error, _mapping  # noqa: PLC0415
+
+        if "sections" not in item:
+            return
+        sections_path = f"{path}.sections"
+        sections = _mapping(item["sections"], sections_path)
+        for key, value in sections.items():
+            if key not in cls.SECTIONS:
+                _error(
+                    sections_path,
+                    f"unknown section '{key}', must be one of: "
+                    f"{', '.join(sorted(cls.SECTIONS))}",
+                )
+            _bool(value, f"{sections_path}.{key}")
 
     def _enabled(self, section):
         return self.sections.get(
@@ -202,15 +221,12 @@ class SysInfoBox(BaseBox):
 
     def _host(self):
         if self.system == "Darwin":
-            identifier = self._command(
-                "sysctl",
-                "-n",
-                "hw.model",
-            )
-
-            if identifier == "MacBookPro18,1":
-                return "MacBook Pro (16-inch, 2021)"
-
+            # `sysctl hw.model` only gives a model identifier (e.g.
+            # "MacBookPro18,1"), not a marketing name, and there's no
+            # built-in way to map one to the other without shipping a
+            # (large, ever-growing) identifier table. system_profiler's
+            # "Model Name" is coarser ("MacBook Pro" with no size/year)
+            # but it's accurate for every Mac, not just one.
             output = self._command(
                 "system_profiler",
                 "SPHardwareDataType",
@@ -344,10 +360,12 @@ class SysInfoBox(BaseBox):
                 ):
                     name = line[:-1]
 
-                    if name not in {
-                        "Displays",
-                        "Apple M1 Pro",
-                    }:
+                    # system_profiler nests display entries under a
+                    # "Displays:" section, which itself sits under a
+                    # section header named for the GPU/chip (e.g.
+                    # "Apple M1 Pro:", "Apple M3 Max:"). Skip both kinds
+                    # of header, not just one specific chip.
+                    if name != "Displays" and not re.match(r"^Apple M\d", name):
                         current = {"name": name}
                         displays.append(current)
 
@@ -523,7 +541,8 @@ class SysInfoBox(BaseBox):
                     ("/", *disk)
                 )
 
-            mounts = {"/Volumes/RYX "}
+            # Any externally-mounted volume, not one specific drive name.
+            mounts = ("/Volumes/",)
 
             for line in self._command(
                 "df",
@@ -917,6 +936,11 @@ class SysInfoBox(BaseBox):
             pass
 
     def _refresh_loop(self):
+        # _collect_static() and the first _refresh() both shell out to
+        # system_profiler / brew / dpkg-query / df, each with several
+        # seconds of timeout headroom. Doing that here, on the background
+        # thread, means constructing this box never blocks app startup.
+        self._initialize_data()
         while not self.stop_event.wait(1):
             try:
                 self._refresh()

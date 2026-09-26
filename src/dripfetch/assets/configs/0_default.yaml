@@ -1,0 +1,237 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Dripfetch configuration
+# ═══════════════════════════════════════════════════════════════════════
+
+# Background color of the entire terminal. Use a six-digit #RRGGBB color
+# (or eight-digit #RRGGBBAA for transparency).
+background: "#000000"
+
+
+# ─────────────────────────────────────────
+# RAIN
+# ─────────────────────────────────────────
+rain:
+  # Stop raindrops when they reach a box. Set to false to let rain pass
+  # straight through boxes instead.
+  collision: true
+
+  # Number of raindrops spawned in the terminal.
+  # Higher values create denser rain and higher CPU usage.
+  # Set to 0 to disable rain.
+  intensity: 200
+
+  # Characters used for each raindrop. One is picked at random per drop.
+  # Uncomment more entries (or add your own) to mix multiple characters.
+  character:
+    - "│"
+    # - "|"
+    # - "."
+    # - "*"
+
+  # Rain colors with their relative probabilities.
+  # Format: [probability, color]. Color is #RRGGBB or #RRGGBBAA.
+  # Probabilities in this list must add up to 1.0.
+  colors:
+    - [0.50, "#FFFFFF"]
+    - [0.50, "#8747FF"]
+
+  # Rain speeds with their relative probabilities.
+  # Value is the delay in milliseconds between movement steps.
+  # Lower values produce faster rain.
+  # Format: [probability, delay_ms]
+  speeds:
+    - [0.20, 21]
+    - [0.20, 31]
+    - [0.20, 41]
+    - [0.20, 51]
+    - [0.20, 61]
+
+  # Raindrop lengths with their relative probabilities.
+  # Format: [probability, length_in_characters]
+  lengths:
+    - [0.70, 5]
+    - [0.25, 15]
+    - [0.05, 25]
+
+
+# ─────────────────────────────────────────
+# BOXES
+# ─────────────────────────────────────────
+boxes:
+  # Default border style for every box, unless overridden per-box below.
+  # Available: single, double, titled_single, titled_double, none.
+  border: titled_double
+
+  # Default border color.
+  border_color: "#FFFFFF"
+
+  # Default text color.
+  text_color: "#FFFFFF"
+
+  # Default accent color for titles and highlights.
+  accent_color: "#8747FF"
+
+  # Space between the border and box content.
+  padding:
+    # Left and right padding.
+    horizontal: 2
+
+    # Top and bottom padding.
+    vertical: 0
+
+  # Boxes displayed by Dripfetch. Every entry needs a "type" and,
+  # optionally, a "position" to place it relative to the terminal
+  # center (positive values move right/down; negative move left/up).
+  # Every box also accepts "border" to override the default border
+  # style above just for that box, and "title" to give it a heading.
+  # Moving a box with the mouse and arrow/WASD keys updates its
+  # position here automatically.
+  items:
+
+    # ─────────────────────────────────────────
+    # LOGO
+    # ─────────────────────────────────────────
+
+    - type: logo
+
+      # Logo to display.
+      # If omitted, the logo is detected from the operating system.
+      # Uncomment to force a specific logo.
+      # Run `dripfetch --list-logos` to see all available logo names.
+      # logo: arch
+
+      colors:
+        - "#8747FF"
+        - "#FFFFFF"
+        - "#687FE5"
+        - "#FFFFFF"
+        - "#8747FF"
+
+      # Initial offset from the terminal center, in character cells.
+      position:
+        horizontal: -44
+        vertical: -6
+
+
+    # ─────────────────────────────────────────
+    # TEXT
+    # ─────────────────────────────────────────
+
+    - type: text
+
+      # Use a YAML block to enter multiple lines of text.
+      # `|` keeps line breaks; `>` folds the lines into a paragraph.
+      text: |
+        Introducing Dripfetch
+        Info dump with style
+
+      # Text alignment: left, center, or right.
+      alignment: left
+
+      # Initial offset from the terminal center, in character cells.
+      position:
+        horizontal: -6
+        vertical: 1
+
+
+    # ─────────────────────────────────────────
+    # SYSTEM INFORMATION
+    # ─────────────────────────────────────────
+
+    - type: sysinfo
+
+      # Sections displayed by the system information box.
+      # Set a section to false to hide it.
+      # Available sections: system, display, hardware, disk, connectivity.
+      sections:
+        system: true
+        display: true
+        hardware: true
+        disk: true
+        connectivity: true
+
+      # Initial offset from the terminal center, in character cells.
+      position:
+        horizontal: 39
+        vertical: 6
+
+
+    # ─────────────────────────────────────────
+    # CLOCK
+    # ─────────────────────────────────────────
+
+    - type: clock
+
+      # Border style just for this box.
+      # Available: single, double.
+      clock_style: double
+
+      # Display size.
+      # Available: small, medium, big.
+      clock_size: medium
+
+      # Use 24-hour time instead of 12-hour with AM/PM.
+      clock_24h: true
+
+      # Display seconds.
+      show_seconds: false
+
+      # Display AM/PM. Only used when clock_24h is false.
+      show_am_pm: false
+
+      # Animate the colon between hours and minutes.
+      blink_colon: true
+
+      # Display the current date underneath the time.
+      show_date: false
+
+      # Initial offset from the terminal center, in character cells.
+      position:
+        horizontal: 7
+        vertical: -14
+
+
+    # ─────────────────────────────────────────
+    # WEATHER
+    # ─────────────────────────────────────────
+
+    # Forecast uses Open-Meteo. An internet connection is needed for
+    # location lookup and current forecast data.
+    - type: weather
+
+      # Number of forecast days to show (1-7). The first is always today.
+      days: 7
+
+      # City/town name used to find the forecast location, e.g. "Tehran".
+      # If omitted, latitude/longitude (set below it) are used instead,
+      # and if those are also omitted, location is guessed from your
+      # public IP address.
+      location: New York
+      # latitude: 40.7128
+      # longitude: -74.0060
+
+      # Temperature units.
+      # Available: celsius, fahrenheit, metric (= celsius), imperial (= fahrenheit).
+      units: metric
+
+      # Initial offset from the terminal center, in character cells.
+      position:
+        horizontal: -50
+        vertical: 12
+
+
+    # ─────────────────────────────────────────
+    # CALENDAR
+    # ─────────────────────────────────────────
+
+    # Monthly calendar with today's date highlighted.
+    - type: calendar
+
+      # Which day of the week starts each row.
+      # Available: monday, sunday, saturday.
+      starting_day: monday
+
+      # Initial offset from the terminal center, in character cells.
+      position:
+        horizontal: -17
+        vertical: 12

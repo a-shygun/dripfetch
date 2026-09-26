@@ -1,257 +1,309 @@
 # Dripfetch
 
-<p align="center">
-  <img src="docs/dripfetch.gif" alt="Dripfetch demo" width="900">
-</p>
+Dripfetch is a customizable terminal dashboard with animated Matrix-style rain. Place system information, ASCII logos, clocks, calendars, weather forecasts, text, and live network graphs anywhere on screen, then tune the colors, borders, and rain from YAML.
 
 <p align="center">
-  A customizable terminal system information display with animated rain.
+  <img src="docs/dripfetch.gif" alt="Animated Dripfetch terminal demo" width="850">
 </p>
 
-<p align="center">
-  <a href="https://github.com/a-shygun/dripfetch/issues">Issues</a>
-</p>
+## Highlights
 
----
+- Animated terminal rain with adjustable density, symbols, colors, speed, length, and box collisions.
+- Seven box types: `logo`, `sysinfo`, `clock`, `calendar`, `weather`, `net`, and `text`.
+- 487 bundled ASCII logos, with automatic system detection or an explicit logo choice.
+- Global box colors and padding, with single, double, titled single, titled double, and no-border styles.
+- Live box placement: click a box and move it with the arrow keys or WASD; positions save to YAML.
+- Multiline text with left, center, or right alignment.
+- Small, medium, and big clocks with optional seconds, date, 12/24-hour time, and blinking colon.
+- Current-month calendar with configurable week start.
+- Mirrored braille download/upload graph.
+- Weather forecast by city or coordinates through Open-Meteo. Weather lookup needs an internet connection.
+- Seven ready-to-use visual presets, plus a separately available default preset at number `0`.
+- Custom YAML files can be used without changing the saved default.
 
-## What is Dripfetch?
+## Installation
 
-Dripfetch is a customizable terminal TUI that combines system information, animated rain, clocks, logos, text, and other information into a single configurable display.
+Dripfetch requires Python 3.12 or newer and a POSIX terminal with curses support (macOS and Linux).
 
-Everything is controlled through a YAML configuration file, allowing you to customize the appearance and layout without modifying the source code.
+### Recommended: install with pipx
 
-### Features
+`pipx` puts Dripfetch in its own virtual environment and makes the command available on your PATH:
 
-- Animated terminal rain
-- System information
-- Large customizable clock
-- ASCII and text boxes
-- Platform logos
-- Weather information
-- Mouse interaction
-- Keyboard-controlled box movement
-- Multiple keyboard layouts
-- Custom colors, borders, padding, and positioning
-- YAML configuration
-- ANSI-based terminal rendering
+```bash
+pipx install --python python3.12 dripfetch
+```
 
----
+Install `pipx` with your operating system's package manager first if it is not already installed. On macOS, for example, use `brew install pipx` and then `pipx ensurepath`.
 
-## Screenshots & Demo
+### Install with pip
 
-<p align="center">
-  <img src="docs/screenshots/dripfetch_terminal.png" alt="Dripfetch terminal" width="800">
-</p>
+Use a virtual environment rather than installing into the operating system's managed Python:
 
-<p align="center">
-  <img src="docs/screenshots/dripfetch_onlyrain.png" alt="Dripfetch rain" width="800">
-</p>
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install dripfetch
+dripfetch
+```
 
-<p align="center">
-  <img src="docs/screenshots/dripfetch_multiple_raindrops.png" alt="Dripfetch multiple raindrops" width="800">
-</p>
+### Install from the GitHub source
 
-<p align="center">
-  <img src="docs/screenshots/dripfetch_onlybox.png" alt="Dripfetch boxes" width="800">
-</p>
+```bash
+git clone https://github.com/a-shygun/dripfetch.git
+cd dripfetch
+pipx install --python python3.12 .
+```
 
-A short terminal recording is also available:
+For a development checkout, use `pipx install --python python3.12 --editable .` or install into an activated virtual environment with `python -m pip install -e .`.
 
-**[Watch the Dripfetch demo](docs/dripfetch.mov)**
+### Homebrew
 
----
-
-# Installation
-
-## Homebrew
-
-Dripfetch is available through the official Dripfetch Homebrew tap:
+The Homebrew formula is maintained in a tap separate from this source repository. When the tap is available, install it with:
 
 ```bash
 brew tap a-shygun/dripfetch
 brew install dripfetch
 ```
 
-To update Dripfetch later:
+### Debian / Ubuntu and Arch Linux
+
+APT and AUR packages require their own maintained package definitions and repositories; those files are not part of this checkout yet. Once published, Debian/Ubuntu users will be able to use `sudo apt install dripfetch`, and Arch users can use `yay -S dripfetch` or build the published AUR package with `makepkg -si`.
+
+### Optional install scripts
+
+The repository's `install.sh` is a convenience wrapper for a local source checkout. It creates a virtual environment under `~/dripfetch`, installs the command in `~/.local/bin`, and adds that directory to the shell PATH when needed:
 
 ```bash
-brew update
-brew upgrade dripfetch
+bash install.sh
 ```
 
----
+Open a new terminal if `dripfetch` is not found after installation. Remove this script-managed environment with `bash uninstall.sh`; the script leaves the repository checkout and `~/.config/dripfetch/config.yaml` in place. The scripts are optional; pipx, pip, and OS package managers handle their own install and uninstall flows.
 
-## PyPI
-
-The easiest way to install Dripfetch through Python is PyPI:
+### Uninstall
 
 ```bash
-pip install dripfetch
+pipx uninstall dripfetch
 ```
 
-Then run:
+For a pip install, activate the same virtual environment and run `python -m pip uninstall dripfetch`. For the script-managed install, run `bash uninstall.sh`. Use `brew uninstall dripfetch`, `sudo apt remove dripfetch`, or `yay -R dripfetch` when uninstalling a package-manager version.
 
-```bash
-dripfetch
-```
+## First run
 
----
-
-## Install from source
-
-If you want to install the latest source directly from GitHub:
-
-```bash
-git clone https://github.com/a-shygun/dripfetch.git
-cd dripfetch
-pip install .
-```
-
-Then:
+Start the dashboard with:
 
 ```bash
 dripfetch
 ```
 
-### Using the installation script
-
-The repository also includes an installation script that creates an isolated virtual environment and installs Dripfetch into it.
+Use `q` to quit and Space to pause or resume the rain. Click a box to select it, then use the arrow keys or WASD to move it. Press Escape to deselect it. A moved box’s new center-relative position is saved in the configuration file automatically.
 
 ```bash
-git clone https://github.com/a-shygun/dripfetch.git
-cd dripfetch
-chmod +x install.sh
-./install.sh
+dripfetch --help
+dripfetch --version
+dripfetch --config-path
 ```
 
-The script:
+## Choose a configuration
 
-- Creates `~/dripfetch`
-- Creates a virtual environment at `~/dripfetch/.venv`
-- Installs Dripfetch into the virtual environment
-- Creates `~/.local/bin/dripfetch`
-- Adds `~/.local/bin` to your shell PATH when necessary
-
-Python 3 is still required for this method.
-
----
-
-# Usage
-
-Start Dripfetch with:
+List the bundled YAML configurations:
 
 ```bash
-dripfetch
+dripfetch --list-configs
+# The requested single-dash spelling is supported too:
+dripfetch -list-configs
 ```
 
-Basic controls:
+The seven showcase configurations are `01_neon_matrix`, `02_moonlight_observatory`, `03_ops_console`, `04_citrus_pop`, `05_arcade_white`, `06_ink_and_amber`, and `07_arcade_cabinet`. Number `0` is the default layout from [`0_default.yaml`](src/dripfetch/assets/configs/0_default.yaml).
 
-| Key | Action |
-|---|---|
-| `q` | Quit |
-| `Space` | Pause/resume rain |
-| `W A S D` | Move selected box |
-| Arrow keys | Move selected box |
-| `Esc` | Deselect box |
-| Mouse | Select a box |
+Preview a preset for one run without changing your saved configuration:
 
-Dripfetch supports different keyboard layouts, including QWERTY, AZERTY, and QWERTZ.
+```bash
+dripfetch --config 3
+dripfetch --config moonlight_observatory
+dripfetch --config ./my-layout.yaml
+```
 
----
+Save a preset as the active configuration so future plain `dripfetch` runs use it:
 
-# Configuration
+```bash
+dripfetch --set-config 3
+dripfetch -set-config moonlight_observatory
+```
 
-Dripfetch uses a YAML configuration file.
-
-Create or restore the default configuration:
+The `--set-config` and `-set-config` forms accept a preset number, full filename stem, or short name. `--init-config` restores the packaged default configuration in your user config directory:
 
 ```bash
 dripfetch --init-config
 ```
 
-Show the active configuration path:
+The active user config normally lives at `~/.config/dripfetch/config.yaml`. Edit it directly to customize the layout, or duplicate one of the example files in [`assets/configs`](src/dripfetch/assets/configs) and run it with `--config PATH`.
+
+## Logos
+
+List available logo names, print one in the terminal, or save a logo choice into your active config:
 
 ```bash
-dripfetch --config-path
+dripfetch --list-logos
+dripfetch -list-logos
+dripfetch --print-logo arch2
+dripfetch -print-logo arch2
+dripfetch --set-logo arch2
+dripfetch -set-logo arch2
 ```
 
-Use a custom configuration:
+The logo setter updates every existing `logo` box. If the active configuration has no logo box, it adds one. An explicit `logo:` value in YAML takes precedence over operating-system detection; omit that key to let Dripfetch detect the system logo. Logo names are the `.txt` filenames without the extension.
 
-```bash
-dripfetch --config path/to/config.yaml
+To choose a logo in YAML:
+
+```yaml
+boxes:
+  items:
+    - type: logo
+      logo: arch2
+      position:
+        horizontal: -30
+        vertical: 0
 ```
 
-The configuration file controls the appearance, layout, boxes, rain, colors, borders, padding, and other behavior.
+## Configure the dashboard
 
----
+Dripfetch reads YAML. The packaged [`0_default.yaml`](src/dripfetch/assets/configs/0_default.yaml) is a commented guide to every default section, and the seven showcase configs demonstrate different layouts and palettes.
 
-# Uninstallation
+The main sections are:
 
-If you installed Dripfetch with `pip`:
+| Section | What it controls |
+| --- | --- |
+| `background` | Terminal background color. |
+| `rain` | Collision behavior, density, symbols, weighted colors, speeds, and drop lengths. |
+| `boxes.border` | Default border style for all boxes: `single`, `double`, `titled_single`, `titled_double`, or `none`. |
+| `boxes.border_color` | Shared box border color. |
+| `boxes.text_color` | Shared content text color. |
+| `boxes.accent_color` | Shared title and highlight color. |
+| `boxes.padding` | Inner horizontal and vertical spacing. |
+| `boxes.items` | The ordered list of boxes, their type-specific options, titles, and positions. |
 
-```bash
-pip uninstall dripfetch
+Colors use `#RRGGBB` or `#RRGGBBAA`. Box positions are offsets in terminal cells from the centered location: positive horizontal values move right and positive vertical values move down. Dragging a box with the mouse or moving it with the keyboard writes updated position values to the active YAML file.
+
+### Example: a compact layout
+
+```yaml
+background: "#080B12"
+rain:
+  collision: true
+  intensity: 120
+  character: ["│", "┃", "╎"]
+  colors:
+    - [0.7, "#21F7A8"]
+    - [0.3, "#45B8FF"]
+  speeds:
+    - [0.5, 30]
+    - [0.5, 50]
+  lengths:
+    - [0.8, 6]
+    - [0.2, 14]
+boxes:
+  border: titled_single
+  border_color: "#50FFC1"
+  text_color: "#D9E5F4"
+  accent_color: "#50FFC1"
+  padding:
+    horizontal: 2
+    vertical: 0
+  items:
+    - type: logo
+      logo: arch2
+      position: {horizontal: -32, vertical: 0}
+    - type: clock
+      clock_size: small
+      clock_24h: true
+      show_seconds: true
+      show_date: true
+      position: {horizontal: 28, vertical: -7}
+    - type: text
+      title: NOTE
+      text: |
+        Dripfetch is running.
+        Edit this YAML to make it yours.
+      alignment: center
+      position: {horizontal: 28, vertical: 7}
 ```
 
-If you installed it using Homebrew:
+Rain `colors`, `speeds`, and `lengths` are weighted lists in `[probability, value]` form; probabilities in each list must add up to `1.0`. Box text can use YAML's `|` block style for preserved multiline text. Text alignment is `left`, `center`, or `right`.
 
-```bash
-brew uninstall dripfetch
-```
+### Box options
 
-If you installed it using `install.sh`, run the included uninstall script from the repository:
+- **`logo`** — set `logo: NAME` to choose a bundled logo. If omitted, Dripfetch detects an operating-system logo. Optionally set `colors: ["#8747FF", "#FFFFFF"]` to color its `$1`, `$2`, and later ASCII color markers in order; without it, the global accent/text/border palette is used.
+- **`sysinfo`** — show system details. Set individual `sections` (`system`, `display`, `hardware`, `disk`, `connectivity`) to `false` to hide them.
+- **`clock`** — `clock_size` is `small`, `medium`, or `big`; `clock_style` is `single` or `double`. Configure `clock_24h`, `show_seconds`, `show_am_pm`, `blink_colon`, and `show_date` with booleans.
+- **`calendar`** — set `starting_day` to `monday`, `sunday`, or `saturday`.
+- **`weather`** — set a city in `location` (or provide coordinates in a hand-written config), `units` to `celsius`/`metric` or `fahrenheit`/`imperial`, and `days` from 1 to 7.
+- **`net`** — configure graph `width`, `height`, and sampling `interval` in seconds. Download and upload are drawn as mirrored braille plots.
+- **`text`** — set `text` to a string or multiline YAML block and `alignment` to `left`, `center`, or `right`.
 
-```bash
-chmod +x uninstall.sh
-./uninstall.sh
-```
+Titles can be added to boxes with `title: ...`. Box text and borders use the palette under `boxes` so the dashboard remains visually consistent.
 
-The uninstall script removes the Dripfetch virtual environment and command symlink while preserving:
+## Gallery
 
-```text
-~/dripfetch
-~/.config/dripfetch/config.yaml
-```
+### Default layout
 
-This means your source files and configuration are not automatically deleted.
+![Dripfetch default configuration](docs/screenshots/0_default.png)
 
-If you want to completely remove the remaining installation directory:
+### Seven bundled themes
 
-```bash
-rm -rf ~/dripfetch
-```
+<table>
+  <tr>
+    <td><img src="docs/screenshots/01_neon_matrix.png" alt="Neon Matrix theme"><br><b>01 · Neon Matrix</b></td>
+    <td><img src="docs/screenshots/02_moonlight_observatory.png" alt="Moonlight Observatory theme"><br><b>02 · Moonlight Observatory</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/03_ops_console.png" alt="Ops Console theme"><br><b>03 · Ops Console</b></td>
+    <td><img src="docs/screenshots/04_citrus_pop.png" alt="Citrus Pop theme"><br><b>04 · Citrus Pop</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/05_arcade_white.png" alt="Arcade White theme"><br><b>05 · Arcade White</b></td>
+    <td><img src="docs/screenshots/06_ink_and_amber.png" alt="Ink and Amber theme"><br><b>06 · Ink and Amber</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/07_arcade_cabinet.png" alt="Arcade Cabinet theme"><br><b>07 · Arcade Cabinet</b></td>
+  </tr>
+</table>
 
-To also remove your Dripfetch configuration:
+### Individual features
 
-```bash
-rm -rf ~/.config/dripfetch
-```
+<table>
+  <tr>
+    <td><img src="docs/screenshots/dripfetch_terminal.png" alt="Dripfetch running in a terminal"><br><b>Terminal dashboard</b></td>
+    <td><img src="docs/screenshots/dripfetch_onlyrain.png" alt="Dripfetch animated rain"><br><b>Animated rain</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/dripfetch_onlybox.png" alt="Dripfetch information boxes"><br><b>Configurable boxes</b></td>
+    <td><img src="docs/screenshots/dripfetch_multiple_raindrops.png" alt="Dripfetch with many raindrops"><br><b>Rain density and colors</b></td>
+  </tr>
+</table>
 
----
+## CLI reference
 
-# Development
+| Command | Action |
+| --- | --- |
+| `dripfetch` | Run with the active user configuration. |
+| `dripfetch --config NUMBER\|NAME\|PATH` | Run once with a bundled preset or custom YAML file. |
+| `dripfetch --list-configs` / `-list-configs` | List bundled config numbers and names. |
+| `dripfetch --set-config NUMBER\|NAME` / `-set-config` | Save a bundled preset as the active config. |
+| `dripfetch --list-logos` / `-list-logos` | List bundled logo names. |
+| `dripfetch --print-logo NAME` / `-print-logo` | Print an ASCII logo. |
+| `dripfetch --set-logo NAME` / `-set-logo` | Save a logo choice in the active config. |
+| `dripfetch --list-boxes` | List available box types. |
+| `dripfetch --config-path` | Print the active config path. |
+| `dripfetch --init-config` | Restore the packaged default config. |
+| `dripfetch --help` | Show all command-line options. |
 
-Clone the repository:
+## Project files
 
-```bash
-git clone https://github.com/a-shygun/dripfetch.git
-cd dripfetch
-```
+- `src/dripfetch/` — application source, packaged default config, logos, presets, and theme screenshots.
+- `docs/` — demo GIF and feature screenshots used above.
+- `install.sh` and `uninstall.sh` — local install and removal helpers.
 
-For development, an editable installation is recommended:
+## License and security
 
-```bash
-pip install -e .
-```
-
-Run the test suite:
-
-```bash
-pytest
-```
-
----
-
-# License
-
-Dripfetch is released under the [MIT License](LICENSE).
+Dripfetch is released under the [MIT License](LICENSE). See [SECURITY.md](SECURITY.md) for private vulnerability reporting instructions.

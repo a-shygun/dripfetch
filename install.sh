@@ -10,6 +10,11 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Installing DripFetch..."
 
+if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)'; then
+    echo "Error: Dripfetch requires Python 3.12 or newer." >&2
+    exit 1
+fi
+
 mkdir -p "$INSTALL_DIR"
 python3 -m venv "$VENV_DIR"
 
