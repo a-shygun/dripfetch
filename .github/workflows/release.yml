@@ -84,3 +84,83 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  update_homebrew:
+    name: Update Homebrew formula
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: publish
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Calculate release archive checksum
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          url="https://github.com/a-shygun/dripfetch/archive/refs/tags/${RELEASE_TAG}.tar.gz"
+          curl --fail --location --silent --show-error "$url" --output "$RUNNER_TEMP/dripfetch.tar.gz"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$RUNNER_TEMP/dripfetch.tar.gz" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Update formula version and source checksum
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          SOURCE_URL: ${{ steps.release.outputs.url }}
+          SOURCE_SHA256: ${{ steps.release.outputs.sha256 }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          formula = Path("Formula/dripfetch.rb")
+          text = formula.read_text()
+          tag = os.environ["RELEASE_TAG"]
+          version = tag.removeprefix("v")
+          source_url = os.environ["SOURCE_URL"]
+          source_sha256 = os.environ["SOURCE_SHA256"]
+
+          text, url_count = re.subn(
+              r'(?m)^  url "https://github\.com/a-shygun/dripfetch/archive/refs/tags/v[^"]+\.tar\.gz"$',
+              f'  url "{source_url}"',
+              text,
+              count=1,
+          )
+          if url_count != 1:
+              raise SystemExit("Could not find the Dripfetch source URL in Formula/dripfetch.rb")
+
+          text, checksum_count = re.subn(
+              r'(?m)^  sha256 "[0-9a-f]{64}"$',
+              f'  sha256 "{source_sha256}"',
+              text,
+              count=1,
+          )
+          if checksum_count != 1:
+              raise SystemExit("Could not find the Dripfetch source checksum in Formula/dripfetch.rb")
+
+          formula.write_text(text)
+          print(f"Updated Homebrew formula to Dripfetch {version}")
+          PY
+
+      - name: Commit formula update
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if git diff --quiet -- Formula/dripfetch.rb; then
+            echo "Formula already matches ${RELEASE_TAG}; no update needed."
+            exit 0
+          fi
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/dripfetch.rb
+          git commit -m "Update Homebrew formula to ${RELEASE_TAG#v}"
+          git push origin HEAD:main

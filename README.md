@@ -59,12 +59,14 @@ For a development checkout, use `pipx install --python python3.12 --editable .` 
 
 ### Homebrew
 
-The Homebrew formula is maintained in a tap separate from this source repository. When the tap is available, install it with:
+The Homebrew formula lives in this repository. Add the tap using its explicit GitHub URL, then install Dripfetch:
 
 ```bash
-brew tap a-shygun/dripfetch
-brew install dripfetch
+brew tap a-shygun/dripfetch https://github.com/a-shygun/dripfetch.git
+brew install a-shygun/dripfetch/dripfetch
 ```
+
+After a new release, update Homebrew and upgrade Dripfetch with `brew update && brew upgrade dripfetch`.
 
 ### Debian / Ubuntu and Arch Linux
 
