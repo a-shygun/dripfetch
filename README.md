@@ -68,9 +68,40 @@ brew install a-shygun/dripfetch/dripfetch
 
 After a new release, update Homebrew and upgrade Dripfetch with `brew update && brew upgrade dripfetch`.
 
-### Debian / Ubuntu and Arch Linux
+### Arch Linux (AUR)
 
-APT and AUR packages require their own maintained package definitions and repositories; those files are not part of this checkout yet. Once published, Debian/Ubuntu users will be able to use `sudo apt install dripfetch`, and Arch users can use `yay -S dripfetch` or build the published AUR package with `makepkg -si`.
+After the package is published to the Arch User Repository, install Dripfetch with an AUR helper such as `yay`:
+
+```bash
+yay -S dripfetch
+```
+
+You can also build and install it directly with `makepkg`:
+
+```bash
+git clone https://github.com/a-shygun/dripfetch.git
+cd dripfetch/packaging/arch
+makepkg -si
+```
+
+The AUR build uses Arch's Python and dependency packages; it does not install into a user-managed virtual environment. A release tag updates the checked-in Arch package version and checksum alongside the Homebrew formula. Once the initial AUR package exists and the repository's `AUR_SSH_PRIVATE_KEY` secret is configured, the release workflow also publishes those updated package files to the AUR automatically. See [ArchWiki's AUR guide](https://wiki.archlinux.org/title/Arch_User_Repository) for how AUR packages are reviewed and built.
+
+For the first AUR publication, add an SSH public key to your AUR account, clone the empty package repository, and push the checked-in recipe:
+
+```bash
+git clone ssh://aur@aur.archlinux.org/dripfetch.git
+cp /path/to/dripfetch/packaging/arch/{PKGBUILD,.SRCINFO} dripfetch/
+cd dripfetch
+git add PKGBUILD .SRCINFO
+git commit -m "Initial import"
+git push
+```
+
+Then add the matching private SSH key to the GitHub repository's Actions secrets as `AUR_SSH_PRIVATE_KEY`. The release workflow uses it for later AUR updates. AUR requires `PKGBUILD` and `.SRCINFO` together, and `makepkg --printsrcinfo` regenerates `.SRCINFO` if you edit the recipe.
+
+### Debian / Ubuntu
+
+There is no apt repository yet. Ubuntu users need a Launchpad PPA (or another apt repository) for `apt install` and automatic apt updates; Debian packaging is a separate follow-up. Meanwhile, Linux users can install Dripfetch with `pipx install --python python3.12 dripfetch` or use the source checkout instructions above.
 
 ### Optional install scripts
 

@@ -1,0 +1,23 @@
+# Maintainer: Amir Shygun <a-shygun@users.noreply.github.com>
+pkgname=dripfetch
+pkgver=0.3.0
+pkgrel=1
+pkgdesc="Customizable terminal system information dashboard with animated rain"
+arch=('any')
+url="https://github.com/a-shygun/dripfetch"
+license=('MIT')
+depends=('python>=3.12' 'python-psutil' 'python-ruamel-yaml')
+makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('7d1fd4c013b496de1a011334bf9c89ecee04679aebf2332c9636a02ece55dd37')
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

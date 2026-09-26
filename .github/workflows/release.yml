@@ -85,14 +85,17 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
-  update_homebrew:
-    name: Update Homebrew formula
+  update_package_managers:
+    name: Update Homebrew and Arch package definitions
     if: startsWith(github.ref, 'refs/tags/v')
     needs: publish
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
+
+    env:
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
 
     steps:
       - name: Check out main
@@ -110,7 +113,7 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "sha256=$(sha256sum "$RUNNER_TEMP/dripfetch.tar.gz" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
 
-      - name: Update formula version and source checksum
+      - name: Update package versions and source checksums
         env:
           RELEASE_TAG: ${{ github.ref_name }}
           SOURCE_URL: ${{ steps.release.outputs.url }}
@@ -147,20 +150,98 @@ jobs:
               raise SystemExit("Could not find the Dripfetch source checksum in Formula/dripfetch.rb")
 
           formula.write_text(text)
-          print(f"Updated Homebrew formula to Dripfetch {version}")
+
+          pkgbuild = Path("packaging/arch/PKGBUILD")
+          text = pkgbuild.read_text()
+          text, version_count = re.subn(
+              r"(?m)^pkgver=[^\n]+$",
+              f"pkgver={version}",
+              text,
+              count=1,
+          )
+          if version_count != 1:
+              raise SystemExit("Could not find pkgver in packaging/arch/PKGBUILD")
+          text, checksum_count = re.subn(
+              r"(?m)^sha256sums=\('[0-9a-f]{64}'\)$",
+              f"sha256sums=('{source_sha256}')",
+              text,
+              count=1,
+          )
+          if checksum_count != 1:
+              raise SystemExit("Could not find sha256sums in packaging/arch/PKGBUILD")
+          pkgbuild.write_text(text)
+
+          srcinfo = Path("packaging/arch/.SRCINFO")
+          text = srcinfo.read_text()
+          text, version_count = re.subn(
+              r"(?m)^\tpkgver = [^\n]+$",
+              f"\tpkgver = {version}",
+              text,
+              count=1,
+          )
+          if version_count != 1:
+              raise SystemExit("Could not find pkgver in packaging/arch/.SRCINFO")
+          text, source_count = re.subn(
+              r"(?m)^\tsource = dripfetch-[^\n]+$",
+              f"\tsource = dripfetch-{version}.tar.gz::https://github.com/a-shygun/dripfetch/archive/refs/tags/v{version}.tar.gz",
+              text,
+              count=1,
+          )
+          if source_count != 1:
+              raise SystemExit("Could not find source in packaging/arch/.SRCINFO")
+          text, checksum_count = re.subn(
+              r"(?m)^\tsha256sums = [0-9a-f]{64}$",
+              f"\tsha256sums = {source_sha256}",
+              text,
+              count=1,
+          )
+          if checksum_count != 1:
+              raise SystemExit("Could not find sha256sums in packaging/arch/.SRCINFO")
+          srcinfo.write_text(text)
+          print(f"Updated Homebrew and Arch metadata to Dripfetch {version}")
           PY
 
-      - name: Commit formula update
+      - name: Commit package definition updates
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          if git diff --quiet -- Formula/dripfetch.rb; then
-            echo "Formula already matches ${RELEASE_TAG}; no update needed."
+          if git diff --quiet -- Formula/dripfetch.rb packaging/arch/PKGBUILD packaging/arch/.SRCINFO; then
+            echo "Package definitions already match ${RELEASE_TAG}; no update needed."
             exit 0
           fi
           git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/dripfetch.rb
-          git commit -m "Update Homebrew formula to ${RELEASE_TAG#v}"
+          git add Formula/dripfetch.rb packaging/arch/PKGBUILD packaging/arch/.SRCINFO
+          git commit -m "Update package definitions to ${RELEASE_TAG#v}"
           git push origin HEAD:main
+
+      - name: Configure AUR SSH key
+        if: env.AUR_SSH_PRIVATE_KEY != ''
+        run: |
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          ssh-keyscan aur.archlinux.org >> "$HOME/.ssh/known_hosts"
+
+      - name: Publish package files to AUR
+        if: env.AUR_SSH_PRIVATE_KEY != ''
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          git clone ssh://aur@aur.archlinux.org/dripfetch.git "$RUNNER_TEMP/aur-dripfetch"
+          cp packaging/arch/PKGBUILD packaging/arch/.SRCINFO "$RUNNER_TEMP/aur-dripfetch/"
+          cd "$RUNNER_TEMP/aur-dripfetch"
+          if git diff --quiet -- PKGBUILD .SRCINFO; then
+            echo "AUR package files already match ${RELEASE_TAG}; no update needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update to ${RELEASE_TAG#v}"
+          git push origin HEAD
+
+      - name: Explain skipped AUR publishing
+        if: env.AUR_SSH_PRIVATE_KEY == ''
+        run: echo "AUR files were updated in the source repository. Add the AUR_SSH_PRIVATE_KEY repository secret to publish them to the AUR automatically."
