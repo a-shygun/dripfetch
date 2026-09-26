@@ -3,7 +3,7 @@ import re
 from importlib.resources import files
 
 from ...app.terminal import parse_color
-from ..manager import BaseBox
+from ..base import BaseBox
 
 
 class LogoBox(BaseBox):
@@ -23,21 +23,42 @@ class LogoBox(BaseBox):
             renderer,
         )
 
-        self.logo = (
-            self._detect_logo()
-            or config.get("logo", "")
-        )
+        # An explicit config value wins; only use platform detection when
+        # no logo was configured.
+        self.logo = config.get("logo") or self._detect_logo() or ""
 
-        self.logo_colors = [
-            parse_color(color)
-            for color in config.get("colors", [])
-        ]
+        configured_colors = config.get("colors")
+        if configured_colors:
+            self.logo_colors = [parse_color(color) for color in configured_colors]
+        else:
+            self.logo_colors = [
+                self.colors.accent,
+                self.colors.text,
+                self.colors.border,
+            ]
 
         self.lines = self._load_logo()
 
+    # ------------------------------------------------------------------
+    # Plug-and-play config validator (called by config.py automatically)
+    # ------------------------------------------------------------------
+    @classmethod
+    def validate_config(cls, item, path):
+        from ...app.config import _color, _error, _string  # noqa: PLC0415
+
+        if "logo" in item:
+            _string(item["logo"], f"{path}.logo")
+        if "colors" in item:
+            colors = item["colors"]
+            colors_path = f"{path}.colors"
+            if not isinstance(colors, list) or not colors:
+                _error(colors_path, "must be a non-empty list of colors")
+            for index, color in enumerate(colors):
+                _color(color, f"{colors_path}[{index}]")
+
     def content(self):
         content = []
-        color = None
+        color = self.colors.text
 
         for line in self.lines:
             parsed_line, color = self._parse_line(
@@ -126,10 +147,7 @@ class LogoBox(BaseBox):
             if part.startswith("$"):
                 index = int(part[1:]) - 1
 
-                if 0 <= index < len(self.logo_colors):
-                    color = self.logo_colors[index]
-                else:
-                    color = None
+                color = self.logo_colors[index % len(self.logo_colors)]
 
                 continue
 

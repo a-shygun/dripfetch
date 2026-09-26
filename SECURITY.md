@@ -15,9 +15,11 @@ If you discover a security vulnerability in Dripfetch, please report it privatel
 
 Please do not open a public GitHub issue for security vulnerabilities.
 
-You can report vulnerabilities by emailing:
+If private vulnerability reporting is enabled for the GitHub repository, use
+the **Security** tab and choose **Report a vulnerability**. If that option is
+unavailable, report the issue by email:
 
-**security@shygun.com**
+**[security@shygun.com](mailto:security@shygun.com)**
 
 Please include:
 
@@ -26,4 +28,5 @@ Please include:
 - The potential impact
 - Any relevant logs, screenshots, or proof of concept
 
-I will review the report and respond as soon as possible.
+The maintainer will review reports and coordinate a fix and disclosure with
+the reporter.

@@ -1,345 +1,344 @@
-import curses
+# import contextlib
 
-from ..app.terminal import parse_color
-
-
-# ---------------------------------------------------------------------------
-# Colors
-# ---------------------------------------------------------------------------
-class BoxColors:
-    def __init__(self, config, overrides=None):
-        box_config = config.get("boxes", {})
-        overrides = overrides or {}
-        custom = overrides.get("colors", {})
-        self.border = self._resolve(
-            overrides,
-            box_config,
-            "border_color",
-            "#FFFFFFFF",
-        )
-        self.text = self._resolve(
-            overrides,
-            box_config,
-            "text_color",
-            "#FFFFFFFF",
-        )
-        self.accent = self._resolve(
-            overrides,
-            box_config,
-            "accent_color",
-            "#FFFFFFFF",
-        )
-        self.background = parse_color(config.get("background", "#00000000"))
-        self.title = self._custom(custom, "title", self.accent)
-        self.line = self._custom(custom, "line", self.accent)
-        self.body = self._custom(custom, "text", self.text)
-
-    @staticmethod
-    def _resolve(overrides, box_config, key, default):
-        value = overrides.get(
-            key,
-            box_config.get(key, default),
-        )
-        return parse_color(value)
-
-    @staticmethod
-    def _custom(custom, key, default):
-        if not isinstance(custom, dict):
-            return default
-        value = custom.get(key)
-        if value is None:
-            return default
-        return parse_color(value)
-
-    @property
-    def background_enabled(self):
-        return self.background.a > 0
+# from .base import BaseBox, Border, BoxColors, Placement
+# from .types.clock import ClockBox
+# from .types.logo import LogoBox
+# from .types.sysinfo import SysInfoBox
+# from .types.text import TextBox
+# from .types.weather import WeatherBox
 
 
-# ---------------------------------------------------------------------------
-# Borders
-# ---------------------------------------------------------------------------
-class Border:
-    TYPES = {
-        "single": ("─", "│", "┌", "┐", "└", "┘"),
-        "double": ("═", "║", "╔", "╗", "╚", "╝"),
-        "none": ("", "", "", "", "", ""),
-    }
+# # ---------------------------------------------------------------------------
+# # Box manager
+# # ---------------------------------------------------------------------------
+# class BoxManager:
+#     TYPES = {
+#         "text": TextBox,
+#         "sysinfo": SysInfoBox,
+#         "clock": ClockBox,
+#         "logo": LogoBox,
+#         "weather": WeatherBox,
+#     }
 
-    def __init__(self, name="single"):
-        self.name = name if name in self.TYPES else "single"
+#     def __init__(
+#         self,
+#         stdscr,
+#         config,
+#         config_path,
+#         renderer,
+#         save_config,
+#     ):
+#         self.stdscr = stdscr
+#         self.config = config
+#         self.config_path = config_path
+#         self.save_config = save_config
+#         self.renderer = renderer
+#         self.box_config = config.get("boxes", {})
+#         self.box_configs = self.box_config.get("items", [])
+#         keyboard_config = config.get("keyboard", {})
+#         keyboard_layout = keyboard_config.get(
+#             "layout",
+#             "qwerty",
+#         )
+#         self.boxes = []
+#         self.positions = []
+#         self.selected = None
+#         self.placement = Placement(
+#             stdscr,
+#             keyboard_layout,
+#         )
+#         self._terminal_size = None
+#         self._initialize()
 
-    @property
-    def characters(self):
-        return self.TYPES[self.name]
+#     def _initialize(self):
+#         self.boxes = [self._create_box(config) for config in self.box_configs]
+#         self.positions = [self._center(index) for index in range(len(self.boxes))]
+#         for index in range(len(self.positions)):
+#             self._clamp(index)
+#         self._terminal_size = self.stdscr.getmaxyx()
 
-    @property
-    def visible(self):
-        return self.name != "none"
+#     def _create_box(self, config):
+#         box_type = config.get("type", "text")
+#         box_class = self.TYPES.get(
+#             box_type,
+#             TextBox,
+#         )
+#         colors = BoxColors(
+#             self.config,
+#             config,
+#         )
+#         return box_class(
+#             self.stdscr,
+#             config,
+#             self.box_config,
+#             colors,
+#             self.renderer,
+#         )
 
-    def dimensions(self, width, height, horizontal, vertical):
-        return (
-            width + horizontal * 2 + 2,
-            height + vertical * 2 + 2,
-        )
+#     def _border(self, index):
+#         config = self.box_configs[index]
+#         name = config.get(
+#             "border",
+#             self.box_config.get(
+#                 "border",
+#                 "single",
+#             ),
+#         )
+#         return Border(name)
 
-    def draw(
-        self,
-        renderer,
-        x,
-        y,
-        width,
-        height,
-        color,
-        selected=False,
-    ):
-        if not self.visible:
-            return
-        (
-            top,
-            side,
-            top_left,
-            top_right,
-            bottom_left,
-            bottom_right,
-        ) = self.characters
-        if selected:
-            top_left = "*"
-        renderer.draw(
-            x,
-            y,
-            top_left + top * (width - 2) + top_right,
-            color,
-        )
-        renderer.draw(
-            x,
-            y + height - 1,
-            bottom_left + top * (width - 2) + bottom_right,
-            color,
-        )
-        for row in range(y + 1, y + height - 1):
-            renderer.draw(
-                x,
-                row,
-                side,
-                color,
-            )
-            renderer.draw(
-                x + width - 1,
-                row,
-                side,
-                color,
-            )
+#     def _dimensions(self, index):
+#         box = self.boxes[index]
+#         content_width, content_height = box.dimensions()
+#         horizontal, vertical = box.padding
+#         return self._border(index).dimensions(
+#             content_width,
+#             content_height,
+#             horizontal,
+#             vertical,
+#         )
 
+#     def _content_geometry(self, index, width, height):
+#         x, y = self.positions[index]
+#         horizontal, vertical = self.boxes[index].padding
+#         content_width = width - 2 - horizontal * 2
+#         content_height = height - 2 - vertical * 2
+#         return (
+#             x + 1 + horizontal,
+#             y + 1 + vertical,
+#             content_width,
+#             content_height,
+#         )
 
-# ---------------------------------------------------------------------------
-# Placement
-# ---------------------------------------------------------------------------
-class Placement:
-    LAYOUTS = {
-        "qwerty": {
-            "up": ord("w"),
-            "left": ord("a"),
-            "down": ord("s"),
-            "right": ord("d"),
-        },
-        "azerty": {
-            "up": ord("z"),
-            "left": ord("q"),
-            "down": ord("s"),
-            "right": ord("d"),
-        },
-        "qwertz": {
-            "up": ord("w"),
-            "left": ord("a"),
-            "down": ord("s"),
-            "right": ord("d"),
-        },
-    }
-    ARROW_KEYS = {
-        curses.KEY_UP: (0, -1),
-        curses.KEY_LEFT: (-1, 0),
-        curses.KEY_DOWN: (0, 1),
-        curses.KEY_RIGHT: (1, 0),
-    }
+#     def _center(self, index):
+#         width, height = self._dimensions(index)
+#         return self.placement.center(
+#             width,
+#             height,
+#             self.box_configs[index].get("position"),
+#         )
 
-    def __init__(self, stdscr, layout="qwerty"):
-        self.stdscr = stdscr
-        self.layout = self._normalize_layout(layout)
+#     def _clamp(self, index):
+#         width, height = self._dimensions(index)
+#         self.placement.clamp(
+#             self.positions[index],
+#             width,
+#             height,
+#         )
 
-    @staticmethod
-    def _normalize_layout(layout):
-        if not isinstance(layout, str):
-            return "qwerty"
-        layout = layout.lower()
-        if layout in Placement.LAYOUTS:
-            return layout
-        return "qwerty"
+#     def resize(self):
+#         size = self.stdscr.getmaxyx()
+#         if size == self._terminal_size:
+#             return
+#         self._terminal_size = size
+#         for index in range(len(self.boxes)):
+#             self.positions[index] = self._center(index)
+#             self._clamp(index)
 
-    def _terminal_size(self):
-        height, width = self.stdscr.getmaxyx()
-        return width, height
+#     def _relative_position(self, index):
+#         width, height = self._dimensions(index)
+#         return self.placement.relative(
+#             self.positions[index],
+#             width,
+#             height,
+#         )
 
-    def _movement(self):
-        keys = self.LAYOUTS[self.layout]
-        return {
-            keys["up"]: (0, -1),
-            keys["left"]: (-1, 0),
-            keys["down"]: (0, 1),
-            keys["right"]: (1, 0),
-            **self.ARROW_KEYS,
-        }
+#     def _save_position(self, index):
+#         horizontal, vertical = self._relative_position(index)
+#         position = self.box_configs[index].setdefault(
+#             "position",
+#             {},
+#         )
+#         position["horizontal"] = horizontal
+#         position["vertical"] = vertical
+#         # Only swallow genuine write failures here (disk full, permission
+#         # denied, etc.) -- those are things a position save can
+#         # reasonably fail on without derailing the session. ConfigError
+#         # (raised by validate_config inside save_config) is also a
+#         # ValueError subclass, but it means the config is actually
+#         # invalid, and silently eating that made a real bug here
+#         # (a stale RAIN_EFFECTS list) look like "saving does nothing"
+#         # instead of surfacing the actual error.
+#         with contextlib.suppress(OSError):
+#             self.save_config(
+#                 self.config,
+#                 self.config_path,
+#             )
 
-    def center(self, width, height, offset=None):
-        terminal_width, terminal_height = self._terminal_size()
-        offset = offset or {}
-        return [
-            (terminal_width - width) // 2 + offset.get("horizontal", 0),
-            (terminal_height - height) // 2 + offset.get("vertical", 0),
-        ]
+#     def get_box_bounds(self, index):
+#         if not 0 <= index < len(self.boxes):
+#             return None
+#         x, y = self.positions[index]
+#         width, height = self._dimensions(index)
+#         return (
+#             x,
+#             y,
+#             x + width - 1,
+#             y + height - 1,
+#         )
 
-    def clamp(self, position, width, height):
-        terminal_width, terminal_height = self._terminal_size()
-        position[0] = max(
-            0,
-            min(
-                position[0],
-                max(0, terminal_width - width),
-            ),
-        )
-        position[1] = max(
-            0,
-            min(
-                position[1],
-                max(0, terminal_height - height),
-            ),
-        )
+#     def get_box_bounds_list(self):
+#         return [self.get_box_bounds(index) for index in range(len(self.boxes))]
 
-    def move(self, position, key):
-        movement = self._movement().get(key)
-        if movement is None:
-            return False
-        dx, dy = movement
-        position[0] += dx
-        position[1] += dy
-        return True
+#     def handle_mouse(self, x, y):
+#         for index in range(len(self.boxes)):
+#             bounds = self.get_box_bounds(index)
+#             if bounds is None:
+#                 continue
+#             left, top, right, bottom = bounds
+#             if left <= x <= right and top <= y <= bottom:
+#                 self.selected = index
+#                 return
 
-    def relative(self, position, width, height):
-        terminal_width, terminal_height = self._terminal_size()
-        return (
-            position[0] - (terminal_width - width) // 2,
-            position[1] - (terminal_height - height) // 2,
-        )
+#     def handle_key(self, key):
+#         # Escape exits box-moving mode.
+#         if key == 27:
+#             self.selected = None
+#             return
+#         # No selected box means we are not in moving mode.
+#         if self.selected is None:
+#             return
+#         position = self.positions[self.selected]
+#         if not self.placement.move(position, key):
+#             return
+#         self._clamp(self.selected)
+#         self._save_position(self.selected)
 
+#     def update(self):
+#         for box in self.boxes:
+#             box.update()
 
-# ---------------------------------------------------------------------------
-# Base box
-# ---------------------------------------------------------------------------
-class BaseBox:
-    ALIGNMENT = "left"
+#     def draw(self):
+#         for index, box in enumerate(self.boxes):
+#             width, height = self._dimensions(index)
+#             x, y = self.positions[index]
+#             self._border(index).draw(
+#                 self.renderer,
+#                 x,
+#                 y,
+#                 width,
+#                 height,
+#                 box.colors.border,
+#                 index == self.selected,
+#             )
+#             content = self._content_geometry(
+#                 index,
+#                 width,
+#                 height,
+#             )
+#             box.draw_content(*content)
 
-    def __init__(
-        self,
-        stdscr,
-        config,
-        box_config,
-        colors,
-        renderer,
-    ):
-        self.stdscr = stdscr
-        self.config = config
-        self.box_config = box_config
-        self.colors = colors
-        self.renderer = renderer
-
-    @property
-    def padding(self):
-        padding = self.box_config.get("padding", {})
-        return (
-            padding.get("horizontal", 2),
-            padding.get("vertical", 1),
-        )
-
-    def content(self):
-        return []
-
-    def update(self):
-        pass
-
-    def dimensions(self):
-        lines = self.content()
-        width = max(
-            (self._line_width(line) for line in lines),
-            default=0,
-        )
-        return width, len(lines)
-
-    def draw_content(self, x, y, width, height):
-        lines = self.content()
-        for row, line in enumerate(lines[:height]):
-            segments = self._segments(line)
-            line_width = self._line_width(segments)
-            if self.ALIGNMENT == "center":
-                column = x + max(
-                    0,
-                    (width - line_width) // 2,
-                )
-            elif self.ALIGNMENT == "right":
-                column = x + max(
-                    0,
-                    width - line_width,
-                )
-            else:
-                column = x
-            for text, color in segments:
-                if column >= x + width:
-                    break
-                available = x + width - column
-                text = text[:available]
-                if text:
-                    self.renderer.draw(
-                        column,
-                        y + row,
-                        text,
-                        color,
-                    )
-                column += len(text)
-
-    def close(self):
-        pass
-
-    @staticmethod
-    def _segments(line):
-        if isinstance(line, str):
-            return [(line, None)]
-        return line
-
-    @classmethod
-    def _line_width(cls, line):
-        return sum(len(text) for text, _ in cls._segments(line))
-
-
+#     def close(self):
+#         for box in self.boxes:
+#             box.close()
 
 import contextlib
+import importlib
+import inspect
+import pkgutil
 
-from .types.clock import ClockBox
-from .types.logo import LogoBox
-from .types.sysinfo import SysInfoBox
-from .types.text import TextBox
-from .types.weather import WeatherBox
+from .base import BaseBox, Border, BoxColors, Placement
+
+
+def get_box_types():
+    """Return the names of the box classes discovered by BoxManager."""
+    return set(BoxManager.TYPES)
+
+
+def validate_box_config(config):
+    """Validate the boxes section, including each discovered box type."""
+    # Reuse config's primitive validators while keeping all box-specific
+    # rules and type discovery with the box manager.
+    from ..app import config as config_validation
+
+    mapping = config_validation._mapping
+    enum = config_validation._enum
+    color = config_validation._color
+    integer = config_validation._integer
+    string = config_validation._string
+    error = config_validation._error
+
+    boxes = mapping(config.get("boxes", {}), "boxes")
+    border_types = set(Border.TYPES)
+    if "border" in boxes:
+        enum(boxes["border"], "boxes.border", border_types)
+    for key in ("border_color", "text_color", "accent_color"):
+        if key in boxes:
+            color(boxes[key], f"boxes.{key}")
+    if "padding" in boxes:
+        padding = mapping(boxes["padding"], "boxes.padding")
+        for key in ("horizontal", "vertical"):
+            if key not in padding:
+                continue
+            value = integer(padding[key], f"boxes.padding.{key}")
+            if value < 0:
+                error(f"boxes.padding.{key}", "must be greater than or equal to 0")
+
+    items = boxes.get("items", [])
+    if not isinstance(items, list):
+        error("boxes.items", "must be a list")
+    for index, item in enumerate(items):
+        path = f"boxes.items[{index}]"
+        item = mapping(item, path)
+        box_type = item.get("type", "text")
+        enum(box_type, f"{path}.type", BoxManager.TYPES)
+        if "border" in item:
+            enum(item["border"], f"{path}.border", border_types)
+        if "title" in item:
+            string(item["title"], f"{path}.title")
+        if "position" in item:
+            position = mapping(item["position"], f"{path}.position")
+            for key in ("horizontal", "vertical"):
+                if key in position:
+                    integer(position[key], f"{path}.position.{key}")
+        box_class = BoxManager.TYPES.get(box_type)
+        if box_class is not None and hasattr(box_class, "validate_config"):
+            box_class.validate_config(item, path)
 
 
 # ---------------------------------------------------------------------------
-# Box manager
+# Auto-discovery: scan box/types/ and collect every BaseBox subclass.
+# Adding a new box type is now just: drop a .py file in box/types/.
+# No registration needed here or in config.py.
 # ---------------------------------------------------------------------------
+def _discover_types():
+    """Return a {type_name: box_class} dict built from box/types/*.py.
+
+    The type name is the module's stem (e.g. ``clock`` from ``clock.py``).
+    Each module is expected to contain exactly one non-abstract BaseBox
+    subclass; if a module contains several, the first one found is used.
+    Modules that contain no such class are silently skipped so that
+    __init__.py or helper modules sitting in the same directory don't break
+    discovery.
+    """
+    types: dict[str, type[BaseBox]] = {}
+
+    # Resolve the package path for box.types relative to this file so
+    # discovery works whether the package is installed or run in-tree.
+    from . import types as _types_pkg  # box/types/__init__.py
+
+    for module_info in pkgutil.iter_modules(_types_pkg.__path__):
+        if module_info.name.startswith("_"):
+            continue  # skip __init__ and private helpers
+        module = importlib.import_module(
+            f".types.{module_info.name}",
+            package=__package__,
+        )
+        for _, obj in inspect.getmembers(module, inspect.isclass):
+            if (
+                issubclass(obj, BaseBox)
+                and obj is not BaseBox
+                and obj.__module__ == module.__name__
+            ):
+                types[module_info.name] = obj
+                break  # one class per module is the convention
+
+    return types
+
+
 class BoxManager:
-    TYPES = {
-        "text": TextBox,
-        "sysinfo": SysInfoBox,
-        "clock": ClockBox,
-        "logo": LogoBox,
-        "weather": WeatherBox,
-    }
+    # Populated once at class-definition time so the scan runs only on
+    # first import, not on every instantiation.
+    TYPES: dict[str, type[BaseBox]] = _discover_types()
 
     def __init__(
         self,
@@ -369,10 +368,15 @@ class BoxManager:
             keyboard_layout,
         )
         self._terminal_size = None
+        self._box_dimensions = []
         self._initialize()
 
     def _initialize(self):
         self.boxes = [self._create_box(config) for config in self.box_configs]
+        self._box_dimensions = [
+            self._dimensions(index)
+            for index in range(len(self.boxes))
+        ]
         self.positions = [self._center(index) for index in range(len(self.boxes))]
         for index in range(len(self.positions)):
             self._clamp(index)
@@ -380,14 +384,11 @@ class BoxManager:
 
     def _create_box(self, config):
         box_type = config.get("type", "text")
-        box_class = self.TYPES.get(
-            box_type,
-            TextBox,
-        )
-        colors = BoxColors(
-            self.config,
-            config,
-        )
+        # Fall back to TextBox if the type isn't found -- same behaviour as
+        # before, but now TextBox is fetched from the discovered map too.
+        fallback = self.TYPES.get("text")
+        box_class = self.TYPES.get(box_type, fallback)
+        colors = BoxColors(self.config)
         return box_class(
             self.stdscr,
             config,
@@ -406,6 +407,9 @@ class BoxManager:
             ),
         )
         return Border(name)
+
+    def _title(self, index):
+        return self.box_configs[index].get("title")
 
     def _dimensions(self, index):
         box = self.boxes[index]
@@ -452,6 +456,17 @@ class BoxManager:
             return
         self._terminal_size = size
         for index in range(len(self.boxes)):
+            self._box_dimensions[index] = self._dimensions(index)
+            self.positions[index] = self._center(index)
+            self._clamp(index)
+
+    def _sync_box_dimensions(self):
+        """Reapply center-relative saved positions when a box changes size."""
+        for index in range(len(self.boxes)):
+            dimensions = self._dimensions(index)
+            if dimensions == self._box_dimensions[index]:
+                continue
+            self._box_dimensions[index] = dimensions
             self.positions[index] = self._center(index)
             self._clamp(index)
 
@@ -471,7 +486,7 @@ class BoxManager:
         )
         position["horizontal"] = horizontal
         position["vertical"] = vertical
-        with contextlib.suppress(OSError, ValueError):
+        with contextlib.suppress(OSError):
             self.save_config(
                 self.config,
                 self.config_path,
@@ -503,11 +518,9 @@ class BoxManager:
                 return
 
     def handle_key(self, key):
-        # Escape exits box-moving mode.
         if key == 27:
             self.selected = None
             return
-        # No selected box means we are not in moving mode.
         if self.selected is None:
             return
         position = self.positions[self.selected]
@@ -519,6 +532,10 @@ class BoxManager:
     def update(self):
         for box in self.boxes:
             box.update()
+        # Some boxes (notably sysinfo) populate their content asynchronously.
+        # Their final dimensions must be applied to the saved center-relative
+        # position instead of retaining the temporary loading-size origin.
+        self._sync_box_dimensions()
 
     def draw(self):
         for index, box in enumerate(self.boxes):
@@ -532,6 +549,7 @@ class BoxManager:
                 height,
                 box.colors.border,
                 index == self.selected,
+                self._title(index),
             )
             content = self._content_geometry(
                 index,

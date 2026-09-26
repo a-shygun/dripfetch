@@ -1,7 +1,26 @@
 import time
-from ..manager import BaseBox
+
+from ..base import BaseBox
+
 DIGITS = {
     "single": {
+        "small": {
+            "0": ["╭─╮", "│ │", "╰─╯"],
+            "1": [" ╮ ", " │ ", "─┴─"],
+            "2": ["╭─╮", "╭─╯", "╰─╮"],
+            "3": ["╭─╮", " ─┤", "╰─╯"],
+            "4": ["│ │", "╰─┤", "  │"],
+            "5": ["╭─╮", "╰─╮", "╰─╯"],
+            "6": ["╭─╮", "├─╮", "╰─╯"],
+            "7": ["╭─╮", "  │", "  │"],
+            "8": ["╭─╮", "├─┤", "╰─╯"],
+            "9": ["╭─╮", "╰─┤", "╰─╯"],
+            ":": [" · ", "   ", " · "],
+            " ": ["   ", "   ", "   "],
+            "A": ["╭─╮", "├─┤", "│ │"],
+            "P": ["╭─╮", "├─╯", "│  "],
+            "M": ["│ │", "│ │", "╵ ╵"],
+        },
         "medium": {
             "0": ["┌────┐", "│    │", "│    │", "│    │", "└────┘"],
             "1": ["  ┌┐  ", "  ││  ", "  ││  ", "  ││  ", "  └┘  "],
@@ -192,6 +211,23 @@ DIGITS = {
         },
     },
     "double": {
+        "small": {
+            "0": ["╔═╗", "║ ║", "╚═╝"],
+            "1": [" ╗ ", " ║ ", "═╩═"],
+            "2": ["╔═╗", "╔═╝", "╚═╗"],
+            "3": ["╔═╗", " ═╣", "╚═╝"],
+            "4": ["║ ║", "╚═╣", "  ║"],
+            "5": ["╔═╗", "╚═╗", "╚═╝"],
+            "6": ["╔═╗", "╠═╗", "╚═╝"],
+            "7": ["╔═╗", "  ║", "  ║"],
+            "8": ["╔═╗", "╠═╣", "╚═╝"],
+            "9": ["╔═╗", "╚═╣", "╚═╝"],
+            ":": [" · ", "   ", " · "],
+            " ": ["   ", "   ", "   "],
+            "A": ["╔═╗", "╠═╣", "║ ║"],
+            "P": ["╔═╗", "╠═╝", "║  "],
+            "M": ["║ ║", "║ ║", "╩ ╩"],
+        },
         "medium": {
             "0": ["╔════╗", "║    ║", "║    ║", "║    ║", "╚════╝"],
             "1": ["  ╔╗  ", "  ║║  ", "  ║║  ", "  ║║  ", "  ╚╝  "],
@@ -383,6 +419,9 @@ DIGITS = {
     },
 }
 class ClockBox(BaseBox):
+    _VALID_STYLES = {"single", "double"}
+    _VALID_SIZES = {"small", "medium", "big"}
+
     def __init__(
         self,
         stdscr,
@@ -398,110 +437,100 @@ class ClockBox(BaseBox):
             colors,
             renderer,
         )
-        self.style = config.get(
-            "clock_style",
-            "single",
-        )
-        self.size = config.get(
-            "clock_size",
-            "medium",
-        )
-        self.clock_24h = config.get(
+        self.style = config.get("clock_style", "single")
+        self.size = config.get("clock_size", "medium")
+        self.clock_24h = config.get("clock_24h", True)
+        self.show_seconds = config.get("show_seconds", True)
+        self.show_am_pm = config.get("show_am_pm", True)
+        self.blink_colon = config.get("blink_colon", False)
+        self.show_date = config.get("show_date", False)
+
+    # ------------------------------------------------------------------
+    # Plug-and-play config validator (called by config.py automatically)
+    # ------------------------------------------------------------------
+    @classmethod
+    def validate_config(cls, item, path):
+        from ...app.config import _bool, _enum  # noqa: PLC0415
+
+        if "clock_style" in item:
+            _enum(
+                item["clock_style"],
+                f"{path}.clock_style",
+                cls._VALID_STYLES,
+            )
+        if "clock_size" in item:
+            _enum(
+                item["clock_size"],
+                f"{path}.clock_size",
+                cls._VALID_SIZES,
+            )
+        for key in (
             "clock_24h",
-            True,
-        )
-        self.show_seconds = config.get(
             "show_seconds",
-            True,
-        )
-        self.show_am_pm = config.get(
             "show_am_pm",
-            True,
-        )
-        self.blink_colon = config.get(
             "blink_colon",
-            False,
-        )
-        self.show_date = config.get(
             "show_date",
-            False,
-        )
+        ):
+            if key in item:
+                _bool(item[key], f"{path}.{key}")
+
     @staticmethod
     def _blank(pattern):
-        return [
-            " " * len(line)
-            for line in pattern
-        ]
+        return [" " * len(line) for line in pattern]
+
     def _time_text(self, now):
         hour = "%H" if self.clock_24h else "%I"
-        seconds = ":%%S" if self.show_seconds else ""
+        seconds = ":%S" if self.show_seconds else ""
         text = time.strftime(
             f"{hour}:%M{seconds}",
             now,
         )
         if not self.clock_24h and self.show_am_pm:
-            text = f"{text[:-2]} {text[-2:]}"
+            text = f"{text} {time.strftime('%p', now)}"
         return text
+
     def _patterns(self, text, now):
         digits = DIGITS[self.style][self.size]
         show_colon = (
             not self.blink_colon
             or now.tm_sec % 2 == 0
         )
-        patterns = []
-        for char in text:
-            if char == ":" and not show_colon:
-                patterns.append(
-                    self._blank(digits[":"])
-                )
-                continue
-            patterns.append(
-                digits.get(
-                    char,
-                    self._blank(digits["0"]),
-                )
-            )
-        return patterns
+        blank_digit = self._blank(digits["0"])
+        return [
+            self._blank(digits[char])
+            if char == ":" and not show_colon
+            else digits.get(char, blank_digit)
+            for char in text
+        ]
+
     def _geometry(self, now):
         text = self._time_text(now)
         patterns = self._patterns(text, now)
         spacing = 2 if self.size == "big" else 1
-        width = 0
-        for pattern in patterns:
-            width += len(pattern[0])
-        width += (
-            len(patterns) - 1
-        ) * spacing
+        clock_width = sum(len(pattern[0]) for pattern in patterns)
+        clock_width += (len(patterns) - 1) * spacing
         height = len(patterns[0])
-        date = ""
-        if self.show_date:
-            date = time.strftime(
-                "%A, %b %d %Y",
-                now,
-            )
+        date = time.strftime("%A, %b %d %Y", now) if self.show_date else ""
         return (
             text,
             patterns,
             spacing,
-            width,
+            clock_width,
             height,
             date,
         )
+
     def dimensions(self):
         (
             _,
             _,
             _,
-            width,
-            height,
+            clock_width,
+            clock_height,
             date,
-        ) = self._geometry(
-            time.localtime()
-        )
-        return (
-            width,
-            height + bool(date) * 2,
-        )
+        ) = self._geometry(time.localtime())
+        return max(clock_width, len(date)), clock_height + bool(date) * 2
+
     def draw_content(
         self,
         x,
@@ -509,51 +538,30 @@ class ClockBox(BaseBox):
         width,
         height,
     ):
-        now = time.localtime()
-        (
-            text,
-            patterns,
-            spacing,
-            clock_width,
-            clock_height,
-            date,
-        ) = self._geometry(now)
-        content_height = (
-            clock_height
-            + bool(date) * 2
+        text, patterns, spacing, clock_width, clock_height, date = self._geometry(
+            time.localtime()
         )
-        x_start = x + max(
-            0,
-            (width - clock_width) // 2,
-        )
-        y_start = y + max(
-            0,
-            (height - content_height) // 2,
-        )
+        content_height = clock_height + bool(date) * 2
+        x_start = x + max(0, (width - clock_width) // 2)
+        y_start = y + max(0, (height - content_height) // 2)
         offset = 0
         for char_index, char in enumerate(text):
             pattern = patterns[char_index]
             color = self.colors.accent if char == ":" else self.colors.text
             for row, line in enumerate(pattern):
-                self.renderer.draw(
-                    x_start + offset,
-                    y_start + row,
-                    line,
-                    color,
-                )
+                self.renderer.draw(x_start + offset, y_start + row, line, color)
             offset += len(pattern[0]) + spacing
         if date:
-            date_x = x + max(
-                0,
-                (width - len(date)) // 2,
-            )
+            date_x = x + max(0, (width - len(date)) // 2)
             self.renderer.draw(
                 date_x,
                 y_start + clock_height + 1,
-                date[:width],
+                date,
                 self.colors.text,
             )
+
     def update(self):
         pass
+
     def close(self):
         pass

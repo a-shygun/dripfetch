@@ -1,0 +1,78 @@
+# 11 Ops Console — practical Dripfetch config
+background: '#050B10'
+rain:
+  collision: true
+  intensity: 95
+  character:
+    - │
+    - ╎
+    - ┆
+  colors:
+    -   - 0.5
+        - '#27C1D9'
+    -   - 0.3
+        - '#65E6C4'
+    -   - 0.2
+        - '#C4F6FF'
+  speeds:
+    -   - 0.25
+        - 26
+    -   - 0.25
+        - 36
+    -   - 0.25
+        - 48
+    -   - 0.25
+        - 62
+  lengths:
+    -   - 0.65
+        - 5
+    -   - 0.25
+        - 12
+    -   - 0.1
+        - 20
+boxes:
+  border: titled_double
+  border_color: '#3EA7C1'
+  text_color: '#D5EDF2'
+  accent_color: '#62D8E9'
+  padding:
+    horizontal: 2
+    vertical: 0
+  items:
+    - type: sysinfo
+      title: HOST OVERVIEW
+      sections:
+        display: false
+      position:
+        horizontal: -55
+        vertical: 1
+    - type: clock
+      title: LOCAL TIME
+      clock_style: double
+      clock_size: small
+      clock_24h: true
+      show_seconds: true
+      show_date: true
+      position:
+        horizontal: 2
+        vertical: -11
+    - type: logo
+      logo: endeavouros
+      title: NEON
+      position:
+        horizontal: 50
+        vertical: -8
+    - type: net
+      title: NETWORK I/O
+      width: 28
+      height: 8
+      interval: 0.5
+      position:
+        horizontal: 50
+        vertical: 10
+    - type: calendar
+      title: SCHEDULE
+      starting_day: monday
+      position:
+        horizontal: 3
+        vertical: 10

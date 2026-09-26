@@ -1,43 +1,22 @@
-name: Release
+name: Build and publish
 
 on:
+  pull_request:
   push:
-    tags:
-      - "v*"
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install package
-        run: python -m pip install -e .
-
-      - name: Install test dependencies
-        run: python -m pip install pytest
-
-      - name: Run tests
-        run: python -m pytest
-
   build:
-    name: Build
-    needs: test
+    name: Build and smoke-check package
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Check out source
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -45,23 +24,45 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install build tools
-        run: python -m pip install build twine
+      - name: Check release tag version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
 
-      - name: Build package
-        run: python -m build
+          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          tag_version = os.environ["GITHUB_REF_NAME"][1:]
+          if tag_version != version:
+              raise SystemExit(f"tag v{tag_version} does not match project version {version}")
+          PY
 
-      - name: Check package
-        run: python -m twine check dist/*
+      - name: Build distributions
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+          python -m twine check dist/*
 
-      - name: Upload artifacts
+      - name: Smoke-check the built wheel
+        run: |
+          python -m venv .smoke-venv
+          .smoke-venv/bin/python -m pip install dist/*.whl
+          .smoke-venv/bin/dripfetch --version
+          .smoke-venv/bin/dripfetch --list-configs
+          .smoke-venv/bin/dripfetch --list-logos
+          .smoke-venv/bin/dripfetch --list-boxes
+
+      - name: Save distributions
         uses: actions/upload-artifact@v4
         with:
           name: distributions
           path: dist/
+          if-no-files-found: error
 
   publish:
     name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
 
@@ -70,6 +71,8 @@ jobs:
       url: https://pypi.org/p/dripfetch
 
     permissions:
+      actions: read
+      contents: read
       id-token: write
 
     steps:

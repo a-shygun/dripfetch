@@ -1,4 +1,5 @@
-from .manager import BaseBox, Border, BoxColors, BoxManager
+from .base import BaseBox, Border, BoxColors
+from .manager import BoxManager
 
 Box = BoxManager
 

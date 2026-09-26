@@ -8,6 +8,12 @@ from ..app.terminal import RGBA, parse_color
 BOX_PADDING = 2
 SPAWN_INTERVAL = 5
 
+SPLASH_CHARS = "˙.,'`"
+SPLASH_DURATION = 0.25  # seconds
+
+ACCEL_RATE = 0.15  # fraction of base_speed shed per second of falling
+ACCEL_FLOOR = 0.15  # never faster than this fraction of base_speed
+
 
 @dataclass
 class Drop:
@@ -23,6 +29,18 @@ class Drop:
     last_move: float = field(
         default_factory=time.monotonic
     )
+    spawned_at: float = field(
+        default_factory=time.monotonic
+    )
+    base_speed: float = 50
+
+
+@dataclass
+class Splash:
+    x: int
+    y: int
+    character: str
+    born: float = field(default_factory=time.monotonic)
 
 
 class ColorManager:
@@ -35,7 +53,7 @@ class ColorManager:
             for color in colors
         }
 
-    def attribute(self, color, tail, length):
+    def attribute(self, color, tail, length, background):
         base = self.colors.get(
             color,
             parse_color("#FFFFFF"),
@@ -43,10 +61,15 @@ class ColorManager:
 
         brightness = 1.0 if length <= 1 else max(0.0, min(1.0, 1 - tail / (length - 1)))
 
+        # Fade toward the configured background color rather than
+        # toward black, so a drop's tail blends into the canvas behind
+        # it instead of always sinking to darkness -- this matters for
+        # light/white backgrounds, where fading to black looks like the
+        # tail is punching a hole in the scene.
         return RGBA(
-            round(base.r * brightness),
-            round(base.g * brightness),
-            round(base.b * brightness),
+            round(background.r + (base.r - background.r) * brightness),
+            round(background.g + (base.g - background.g) * brightness),
+            round(background.b + (base.b - background.b) * brightness),
             base.a,
         )
 
@@ -69,11 +92,20 @@ class Rain:
         )
 
         self.drops = []
+        self.splashes = []
         self.colors = ColorManager()
 
         self.paused_at = None
         self.spawned = 0
         self.spawned_at = time.monotonic()
+
+        # Drop (and splash) tails fade toward this color instead of
+        # black. Matches the same background the Renderer fills the
+        # screen with and BoxColors falls back to, so rain blends into
+        # whatever canvas color the rest of the app is using.
+        self.background = parse_color(
+            config.get("background", "#000000FF")
+        )
 
         rain = config.get("rain", {})
 
@@ -105,6 +137,17 @@ class Rain:
         self.rain_colors = rain.get(
             "colors",
             [],
+        )
+
+        # Effects are opt-in and default to off, so nothing changes
+        # unless one is explicitly flipped on in config.
+        effects = rain.get("effects", {})
+
+        self.fx_acceleration = bool(
+            effects.get("acceleration", False)
+        )
+        self.fx_splash = bool(
+            effects.get("splash", False)
         )
 
         colors = dict.fromkeys(
@@ -141,14 +184,8 @@ class Rain:
                 and left <= x <= right
             ):
                 targets = (
-                    max(
-                        0,
-                        left - BOX_PADDING,
-                    ),
-                    min(
-                        self.width - 1,
-                        right + BOX_PADDING,
-                    ),
+                    left - BOX_PADDING,
+                    right + BOX_PADDING,
                 )
 
                 target = min(
@@ -211,18 +248,20 @@ class Rain:
             ),
         )
 
+        speed = max(
+            1,
+            float(
+                self._choose(
+                    self.speeds,
+                    50,
+                )
+            ),
+        )
+
         return Drop(
             x=random.randrange(self.width),
             head_y=-1,
-            speed=max(
-                1,
-                float(
-                    self._choose(
-                        self.speeds,
-                        50,
-                    )
-                ),
-            ),
+            speed=speed,
             length=length,
             color=self._choose(
                 self.rain_colors,
@@ -232,6 +271,7 @@ class Rain:
                 self.characters
             ),
             path=deque(maxlen=length),
+            base_speed=speed,
         )
 
     def _spawn(self, now):
@@ -270,11 +310,23 @@ class Rain:
         if target is None:
             return
 
+        if drop.x == target:
+            drop.redirect_target = None
+            return
+
         direction = (
             1 if target > drop.x else -1
         )
 
         drop.x += direction
+
+        # A box can touch the terminal edge. Let the drop finish its
+        # deflection beyond that edge instead of stopping at the last
+        # visible column and colliding with the same side forever.
+        if not 0 <= drop.x < self.width:
+            drop.active = False
+            drop.redirect_target = None
+            return
 
         if drop.character in ("│", "|"):
             drop.path.append(
@@ -364,6 +416,18 @@ class Rain:
     # Update
     # ------------------------------------------------------------------
 
+    def _current_speed(self, drop, now):
+        if not self.fx_acceleration:
+            return drop.speed
+
+        age = max(0.0, now - drop.spawned_at)
+        factor = max(
+            ACCEL_FLOOR,
+            1 - age * ACCEL_RATE,
+        )
+
+        return max(5.0, drop.base_speed * factor)
+
     def _update_drop(
         self,
         drop,
@@ -373,9 +437,11 @@ class Rain:
         if not drop.active:
             return
 
+        speed = self._current_speed(drop, now)
+
         interval = max(
             1.0,
-            float(drop.speed),
+            float(speed),
         ) / 1000
 
         elapsed = now - drop.last_move
@@ -433,6 +499,13 @@ class Rain:
 
         self.drops = alive
 
+        if self.splashes:
+            self.splashes = [
+                splash
+                for splash in self.splashes
+                if now - splash.born < SPLASH_DURATION
+            ]
+
     # ------------------------------------------------------------------
     # Rendering
     # ------------------------------------------------------------------
@@ -475,6 +548,44 @@ class Rain:
                     drop.color,
                     tail,
                     drop.length,
+                    self.background,
+                ),
+            )
+
+    def _draw_splashes(self):
+        if not self.splashes:
+            return
+
+        now = time.monotonic()
+        base = parse_color("#FFFFFF")
+        background = self.background
+
+        for splash in self.splashes:
+            if not (
+                0 <= splash.x < self.width
+                and 0 <= splash.y < self.height
+            ):
+                continue
+
+            age = now - splash.born
+
+            if age >= SPLASH_DURATION:
+                continue
+
+            fade = max(0.0, 1 - age / SPLASH_DURATION)
+
+            # Same background-relative fade as drops: a fresh splash is
+            # full white, and as it ages it blends into the background
+            # color instead of fading to black.
+            self.renderer.draw(
+                splash.x,
+                splash.y,
+                splash.character,
+                RGBA(
+                    round(background.r + (base.r - background.r) * fade),
+                    round(background.g + (base.g - background.g) * fade),
+                    round(background.b + (base.b - background.b) * fade),
+                    base.a,
                 ),
             )
 
@@ -488,6 +599,9 @@ class Rain:
                 drop,
                 bounds,
             )
+
+        if self.fx_splash:
+            self._draw_splashes()
 
     # ------------------------------------------------------------------
     # Pause / resume
@@ -508,6 +622,10 @@ class Rain:
 
         for drop in self.drops:
             drop.last_move += delay
+            drop.spawned_at += delay
+
+        for splash in self.splashes:
+            splash.born += delay
 
         self.spawned_at += delay
         self.paused_at = None
@@ -517,6 +635,7 @@ class Rain:
 
         for drop in self.drops:
             drop.last_move = now
+            drop.spawned_at = now
 
         self.spawned_at = now
         self.spawned = 0
@@ -547,6 +666,7 @@ class Rain:
             or self.height <= 0
         ):
             self.drops.clear()
+            self.splashes.clear()
             self.reset_timing()
             return True
 
@@ -577,9 +697,18 @@ class Rain:
             alive.append(drop)
 
         self.drops = alive
+
+        self.splashes = [
+            splash
+            for splash in self.splashes
+            if 0 <= splash.x < self.width
+            and 0 <= splash.y < self.height
+        ]
+
         self.reset_timing()
 
         return True
 
     def close(self):
         self.drops.clear()
+        self.splashes.clear()

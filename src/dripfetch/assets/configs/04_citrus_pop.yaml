@@ -1,0 +1,65 @@
+# 05 Citrus Pop — Dripfetch showcase config
+background: '#101407'
+rain:
+  collision: true
+  intensity: 180
+  character:
+    - '*'
+    - +
+    - │
+  colors:
+    -   - 0.58
+        - '#C8F542'
+    -   - 0.27
+        - '#FF9F1C'
+    -   - 0.15
+        - '#F4F269'
+  speeds:
+    -   - 0.2
+        - 24
+    -   - 0.25
+        - 34
+    -   - 0.3
+        - 46
+    -   - 0.25
+        - 60
+  lengths:
+    -   - 0.65
+        - 5
+    -   - 0.25
+        - 12
+    -   - 0.1
+        - 20
+boxes:
+  border: single
+  border_color: '#A6CF28'
+  text_color: '#F5FFD5'
+  accent_color: '#FF9F1C'
+  padding:
+    horizontal: 2
+    vertical: 0
+  items:
+    - type: text
+      title: GOOD MORNING!
+      text: "A little color\nfor your terminal.\n\nSTAY CURIOUS."
+      alignment: center
+      position:
+        horizontal: -49
+        vertical: -1
+    - type: clock
+      title: THE MOMENT
+      clock_style: single
+      clock_size: small
+      clock_24h: false
+      show_seconds: true
+      show_am_pm: true
+      show_date: true
+      position:
+        horizontal: -1
+        vertical: -1
+    - type: calendar
+      title: TODAY
+      starting_day: monday
+      position:
+        horizontal: 49
+        vertical: -1

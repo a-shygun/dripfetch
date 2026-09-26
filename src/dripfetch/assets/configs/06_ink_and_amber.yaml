@@ -1,0 +1,66 @@
+# 06 Rose Dusk — Dripfetch showcase config
+background: '#170B12'
+rain:
+  collision: true
+  intensity: 105
+  character:
+    - │
+    - ╎
+    - ·
+  colors:
+    -   - 0.58
+        - '#FF71A8'
+    -   - 0.27
+        - '#DE8CFF'
+    -   - 0.15
+        - '#FFC5D7'
+  speeds:
+    -   - 0.2
+        - 24
+    -   - 0.25
+        - 34
+    -   - 0.3
+        - 46
+    -   - 0.25
+        - 60
+  lengths:
+    -   - 0.65
+        - 5
+    -   - 0.25
+        - 12
+    -   - 0.1
+        - 20
+boxes:
+  border: titled_double
+  border_color: '#E66B9F'
+  text_color: '#FFE4EE'
+  accent_color: '#FF9DC8'
+  padding:
+    horizontal: 3
+    vertical: 1
+  items:
+    - type: text
+      title: AFTER HOURS
+      text: "soft light\nslow rain\n\nmake space to think"
+      alignment: left
+      position:
+        horizontal: -30
+        vertical: -8
+    - type: clock
+      title: SLOW DOWN
+      clock_style: double
+      clock_size: medium
+      clock_24h: false
+      show_seconds: false
+      show_am_pm: true
+      blink_colon: true
+      show_date: true
+      position:
+        horizontal: 23
+        vertical: -6
+    - type: calendar
+      title: THE MONTH
+      starting_day: saturday
+      position:
+        horizontal: 5
+        vertical: 11
