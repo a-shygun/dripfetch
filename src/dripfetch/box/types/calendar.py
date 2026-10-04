@@ -1,7 +1,12 @@
-import calendar
 from datetime import date
 
 from ..base import BaseBox
+from .helper import validation
+from .helper.calendar_grid import (
+    VALID_STARTING_DAYS,
+    MonthGrid,
+    normalize_starting_day,
+)
 
 
 class CalendarBox(BaseBox):
@@ -19,124 +24,90 @@ class CalendarBox(BaseBox):
 
     # 2-char day cells with 1-char gaps: 7*2 + 6*1 = 20 chars wide.
     _CELL = 2
-    _GAP  = 1
+    _GAP = 1
     _DAYS_PER_WEEK = 7
     _GRID_WIDTH = _DAYS_PER_WEEK * _CELL + (_DAYS_PER_WEEK - 1) * _GAP  # = 20
 
-    _VALID_STARTING_DAYS = {"monday", "sunday", "saturday"}
-
-    # Day-name header row for each starting day.
-    _DAY_NAMES = {
-        "monday":   ("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"),
-        "saturday": ("Sa", "Su", "Mo", "Tu", "We", "Th", "Fr"),
-        "sunday":   ("Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"),
-    }
-
-    # calendar module firstweekday values (0=Mon, 5=Sat, 6=Sun).
-    _FIRST_WEEKDAY = {
-        "monday":   0,
-        "saturday": 5,
-        "sunday":   6,
-    }
+    # Title, rule, day names, rule.
+    _HEADER_ROWS = 4
 
     def __init__(self, stdscr, config, boxes, colors, renderer):
         super().__init__(stdscr, config, boxes, colors, renderer)
-        raw = config.get("starting_day", "monday")
-        self._start = raw.lower() if isinstance(raw, str) else "monday"
-        if self._start not in self._VALID_STARTING_DAYS:
-            self._start = "monday"
+        self._grid = MonthGrid(normalize_starting_day(config.get("starting_day")))
 
-    # ------------------------------------------------------------------
-    # Plug-and-play config validator (called by config.py automatically)
-    # ------------------------------------------------------------------
     @classmethod
     def validate_config(cls, item, path):
-        from ...app.config import _string, _error  # noqa: PLC0415
-
         if "starting_day" in item:
-            value = _string(item["starting_day"], f"{path}.starting_day")
-            if value.lower() not in cls._VALID_STARTING_DAYS:
-                _error(
+            value = validation.string(item["starting_day"], f"{path}.starting_day")
+            if value.lower() not in VALID_STARTING_DAYS:
+                validation.error(
                     f"{path}.starting_day",
-                    f"must be one of: {', '.join(sorted(cls._VALID_STARTING_DAYS))}",
+                    f"must be one of: {', '.join(sorted(VALID_STARTING_DAYS))}",
                 )
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-    def _month_matrix(self, year, month):
-        """Week-lists of date objects or None (None = outside target month)."""
-        cal = calendar.Calendar(firstweekday=self._FIRST_WEEKDAY[self._start])
-        return [
-            [d if d.month == month else None for d in week]
-            for week in cal.monthdatescalendar(year, month)
-        ]
 
     # ------------------------------------------------------------------
     # BaseBox interface
     # ------------------------------------------------------------------
     def dimensions(self):
         today = date.today()
-        weeks = self._month_matrix(today.year, today.month)
-        return self._GRID_WIDTH, 4 + len(weeks)
+        weeks = self._grid.weeks(today.year, today.month)
+        return self._GRID_WIDTH, self._HEADER_ROWS + len(weeks)
 
     def draw_content(self, x, y, width, height):
         if width <= 0 or height <= 0:
             return
 
         today = date.today()
-        year  = today.year
-        month = today.month
-        weeks = self._month_matrix(year, month)
+        weeks = self._grid.weeks(today.year, today.month)
 
-        row = 0
+        self._draw_title(x, y, width, today)
+        self._draw_rule(x, y + 1, width)
+        self._draw_day_names(x, y + 2, width)
+        self._draw_rule(x, y + 3, width)
 
-        # ── Title: "September 2026" ──────────────────────────────────
-        title = date(year, month, 1).strftime("%B %Y")
+        for offset, week in enumerate(weeks):
+            row = self._HEADER_ROWS + offset
+            if row >= height:
+                break
+            self._draw_week(x, y + row, width, week, today)
+
+    # ------------------------------------------------------------------
+    # Drawing pieces
+    # ------------------------------------------------------------------
+    def _cell_x(self, x, column):
+        return x + column * (self._CELL + self._GAP)
+
+    def _draw_title(self, x, y, width, today):
+        title = date(today.year, today.month, 1).strftime("%B %Y")
         self.renderer.draw(
             x + max(0, (self._GRID_WIDTH - len(title)) // 2),
-            y + row,
+            y,
             title[:width],
             self.colors.title,
         )
-        row += 1
 
-        # ── Separator ───────────────────────────────────────────────
-        self.renderer.draw(x, y + row, "─" * min(width, self._GRID_WIDTH), self.colors.line)
-        row += 1
+    def _draw_rule(self, x, y, width):
+        self.renderer.draw(
+            x, y, "─" * min(width, self._GRID_WIDTH), self.colors.line
+        )
 
-        # ── Day names ───────────────────────────────────────────────
-        for col, name in enumerate(self._DAY_NAMES[self._start]):
-            cx = x + col * (self._CELL + self._GAP)
+    def _draw_day_names(self, x, y, width):
+        for column, name in enumerate(self._grid.day_names):
+            cx = self._cell_x(x, column)
             if cx + self._CELL > x + width:
                 break
-            self.renderer.draw(cx, y + row, name, self.colors.line)
-        row += 1
+            self.renderer.draw(cx, y, name, self.colors.line)
 
-        # ── Separator ───────────────────────────────────────────────
-        self.renderer.draw(x, y + row, "─" * min(width, self._GRID_WIDTH), self.colors.line)
-        row += 1
-
-        # ── Week rows ───────────────────────────────────────────────
-        for week in weeks:
-            if row >= height:
+    def _draw_week(self, x, y, width, week, today):
+        for column, day in enumerate(week):
+            cx = self._cell_x(x, column)
+            if cx + self._CELL > x + width:
                 break
 
-            for col, day in enumerate(week):
-                cx = x + col * (self._CELL + self._GAP)
-                if cx + self._CELL > x + width:
-                    break
+            if day is None:
+                # Blank slot -- day belongs to an adjacent month.
+                self.renderer.draw(cx, y, "  ", self.colors.body)
+                continue
 
-                if day is None:
-                    # Blank slot — day belongs to an adjacent month.
-                    self.renderer.draw(cx, y + row, "  ", self.colors.body)
-                    continue
-
-                label = f"{day.day:2d}"
-
-                if day == today:
-                    self.renderer.draw(cx, y + row, label, self.colors.accent)
-                else:
-                    self.renderer.draw(cx, y + row, label, self.colors.body)
-
-            row += 1
+            color = self.colors.accent if day == today else self.colors.body
+            self.renderer.draw(cx, y, f"{day.day:2d}", color)

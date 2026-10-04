@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dripfetch"
-version = "0.3.0"
+version = "0.4.0"
 description = "A customizable terminal system information display with animated rain."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
@@ -22,7 +22,10 @@ classifiers = [
     "Operating System :: POSIX",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: System",
     "Topic :: Terminals",
 ]
@@ -51,7 +54,7 @@ dripfetch = [
 ]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py310"
 line-length = 88
 src = ["src", "tests"]
 

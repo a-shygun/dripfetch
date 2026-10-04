@@ -2,8 +2,7 @@ import curses
 import time
 from pathlib import Path
 
-from ..box import Box
-from ..box.base import Border, BoxColors
+from ..box import Border, Box, BoxColors
 from ..rain import Rain
 from .config import load_config, save_config
 from .terminal import Renderer, cleanup, parse_color, setup

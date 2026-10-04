@@ -1,567 +1,70 @@
 import time
 
 from ..base import BaseBox
+from .helper import validation
+from .helper.clock_layout import ClockOptions, build_geometry
 
-DIGITS = {
-    "single": {
-        "small": {
-            "0": ["╭─╮", "│ │", "╰─╯"],
-            "1": [" ╮ ", " │ ", "─┴─"],
-            "2": ["╭─╮", "╭─╯", "╰─╮"],
-            "3": ["╭─╮", " ─┤", "╰─╯"],
-            "4": ["│ │", "╰─┤", "  │"],
-            "5": ["╭─╮", "╰─╮", "╰─╯"],
-            "6": ["╭─╮", "├─╮", "╰─╯"],
-            "7": ["╭─╮", "  │", "  │"],
-            "8": ["╭─╮", "├─┤", "╰─╯"],
-            "9": ["╭─╮", "╰─┤", "╰─╯"],
-            ":": [" · ", "   ", " · "],
-            " ": ["   ", "   ", "   "],
-            "A": ["╭─╮", "├─┤", "│ │"],
-            "P": ["╭─╮", "├─╯", "│  "],
-            "M": ["│ │", "│ │", "╵ ╵"],
-        },
-        "medium": {
-            "0": ["┌────┐", "│    │", "│    │", "│    │", "└────┘"],
-            "1": ["  ┌┐  ", "  ││  ", "  ││  ", "  ││  ", "  └┘  "],
-            "2": ["┌────┐", "     │", "┌────┘", "│     ", "└────┘"],
-            "3": ["┌────┐", "     │", " ────┤", "     │", "└────┘"],
-            "4": ["┌    ┐", "│    │", "└────┤", "     │", "     ┘"],
-            "5": ["┌────┐", "│     ", "└────┐", "     │", "└────┘"],
-            "6": ["┌────┐", "│     ", "├────┐", "│    │", "└────┘"],
-            "7": ["┌────┐", "     │", "     │", "     │", "     ┘"],
-            "8": ["┌────┐", "│    │", "├────┤", "│    │", "└────┘"],
-            "9": ["┌────┐", "│    │", "└────┤", "     │", "└────┘"],
-            ":": ["  ┌┐  ", "  └┘  ", "      ", "  ┌┐  ", "  └┘  "],
-            " ": ["      ", "      ", "      ", "      ", "      "],
-            "M": ["┌┐   ┌┐", "│└┐ ┌┘│", "│ └┬┘ │", "│     │", "└     ┘"],
-            "A": ["┌────┐", "│    │", "├────┤", "│    │", "└    ┘"],
-            "P": ["┌────┐", "│    │", "├────┘", "│     ", "└     "],
-        },
-        "big": {
-            "0": [
-                "┌──────────┐",
-                "│ ┌──────┐ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ └──────┘ │",
-                "└──────────┘",
-            ],
-            "1": [
-                "    ┌──┐    ",
-                "    │  │    ",
-                "    │  │    ",
-                "    │  │    ",
-                "    │  │    ",
-                "    │  │    ",
-                "    │  │    ",
-                "    │  │    ",
-                "    │  │    ",
-                "    └──┘    ",
-            ],
-            "2": [
-                "┌──────────┐",
-                "│ ┌──────┐ │",
-                "└─┘      │ │",
-                "         │ │",
-                "┌────────┘ │",
-                "│ ┌────────┘",
-                "│ │         ",
-                "│ │      ┌─┐",
-                "│ └──────┘ │",
-                "└──────────┘",
-            ],
-            "3": [
-                "┌──────────┐",
-                "│ ┌──────┐ │",
-                "└─┘      │ │",
-                "         │ │",
-                "  ┌──────┘ │",
-                "  └──────┐ │",
-                "         │ │",
-                "┌─┐      │ │",
-                "│ └──────┘ │",
-                "└──────────┘",
-            ],
-            "4": [
-                "┌──┐    ┌──┐",
-                "│ ┌┘    └┐ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ └──────┘ │",
-                "└────────┐ │",
-                "         │ │",
-                "         │ │",
-                "       ┌─┘ │",
-                "       └───┘",
-            ],
-            "5": [
-                "┌──────────┐",
-                "│ ┌──────┐ │",
-                "│ │      └─┘",
-                "│ │         ",
-                "│ └────────┐",
-                "└────────┐ │",
-                "         │ │",
-                "┌─┐      │ │",
-                "│ └──────┘ │",
-                "└──────────┘",
-            ],
-            "6": [
-                "┌──────────┐",
-                "│ ┌──────┐ │",
-                "│ │      └─┘",
-                "│ │         ",
-                "│ └────────┐",
-                "│ ┌──────┐ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ └──────┘ │",
-                "└──────────┘",
-            ],
-            "7": [
-                "┌──────────┐",
-                "│ ┌──────┐ │",
-                "└─┘      │ │",
-                "         │ │",
-                "         │ │",
-                "         │ │",
-                "         │ │",
-                "         │ │",
-                "        ┌┘ │",
-                "        └──┘",
-            ],
-            "8": [
-                "┌──────────┐",
-                "│ ┌──────┐ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ └──────┘ │",
-                "│ ┌──────┐ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ └──────┘ │",
-                "└──────────┘",
-            ],
-            "9": [
-                "┌──────────┐",
-                "│ ┌──────┐ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ └──────┘ │",
-                "└────────┐ │",
-                "         │ │",
-                "┌─┐      │ │",
-                "│ └──────┘ │",
-                "└──────────┘",
-            ],
-            ":": [
-                "            ",
-                "   ┌────┐   ",
-                "   │ ┌┐ │   ",
-                "   │ └┘ │   ",
-                "   └────┘   ",
-                "   ┌────┐   ",
-                "   │ ┌┐ │   ",
-                "   │ └┘ │   ",
-                "   └────┘   ",
-                "            ",
-            ],
-            " ": ["  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  "],
-            "M": [
-                "┌────┐ ┌────┐",
-                "│ ┌┐ │ │ ┌┐ │",
-                "│ ││ │ │ ││ │",
-                "│ ││ └─┘ ││ │",
-                "│ │└┐   ┌┘│ │",
-                "│ │ └───┘ │ │",
-                "│ │       │ │",
-                "│ │       │ │",
-                "│ │       │ │",
-                "└─┘       └─┘",
-            ],
-            "A": [
-                "┌──────────┐",
-                "│ ┌──────┐ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ └──────┘ │",
-                "│ ┌──────┐ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "└─┘      └─┘",
-            ],
-            "P": [
-                "┌──────────┐",
-                "│ ┌──────┐ │",
-                "│ │      │ │",
-                "│ │      │ │",
-                "│ └──────┘ │",
-                "│ ┌────────┘",
-                "│ │         ",
-                "│ │         ",
-                "│ │         ",
-                "└─┘         ",
-            ],
-        },
-    },
-    "double": {
-        "small": {
-            "0": ["╔═╗", "║ ║", "╚═╝"],
-            "1": [" ╗ ", " ║ ", "═╩═"],
-            "2": ["╔═╗", "╔═╝", "╚═╗"],
-            "3": ["╔═╗", " ═╣", "╚═╝"],
-            "4": ["║ ║", "╚═╣", "  ║"],
-            "5": ["╔═╗", "╚═╗", "╚═╝"],
-            "6": ["╔═╗", "╠═╗", "╚═╝"],
-            "7": ["╔═╗", "  ║", "  ║"],
-            "8": ["╔═╗", "╠═╣", "╚═╝"],
-            "9": ["╔═╗", "╚═╣", "╚═╝"],
-            ":": [" · ", "   ", " · "],
-            " ": ["   ", "   ", "   "],
-            "A": ["╔═╗", "╠═╣", "║ ║"],
-            "P": ["╔═╗", "╠═╝", "║  "],
-            "M": ["║ ║", "║ ║", "╩ ╩"],
-        },
-        "medium": {
-            "0": ["╔════╗", "║    ║", "║    ║", "║    ║", "╚════╝"],
-            "1": ["  ╔╗  ", "  ║║  ", "  ║║  ", "  ║║  ", "  ╚╝  "],
-            "2": ["╔════╗", "     ║", "╔════╝", "║     ", "╚════╝"],
-            "3": ["╔════╗", "     ║", " ════╣", "     ║", "╚════╝"],
-            "4": ["╔    ╗", "║    ║", "╚════╣", "     ║", "     ╝"],
-            "5": ["╔════╗", "║     ", "╚════╗", "     ║", "╚════╝"],
-            "6": ["╔════╗", "║     ", "╠════╗", "║    ║", "╚════╝"],
-            "7": ["╔════╗", "     ║", "     ║", "     ║", "     ╝"],
-            "8": ["╔════╗", "║    ║", "╠════╣", "║    ║", "╚════╝"],
-            "9": ["╔════╗", "║    ║", "╚════╣", "     ║", "╚════╝"],
-            ":": ["  ╔╗  ", "  ╚╝  ", "      ", "  ╔╗  ", "  ╚╝  "],
-            " ": ["      ", "      ", "      ", "      ", "      "],
-            "M": ["╔╗   ╔╗", "║╚╗ ╔╝║", "║ ╚╦╝ ║", "║     ║", "╚     ╝"],
-            "A": ["╔════╗", "║    ║", "╠════╣", "║    ║", "╚    ╝"],
-            "P": ["╔════╗", "║    ║", "╠════╝", "║     ", "╚     "],
-        },
-        "big": {
-            "0": [
-                "╔══════════╗",
-                "║ ╔══════╗ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ╚══════╝ ║",
-                "╚══════════╝",
-            ],
-            "1": [
-                "    ╔══╗    ",
-                "    ║  ║    ",
-                "    ║  ║    ",
-                "    ║  ║    ",
-                "    ║  ║    ",
-                "    ║  ║    ",
-                "    ║  ║    ",
-                "    ║  ║    ",
-                "    ║  ║    ",
-                "    ╚══╝    ",
-            ],
-            "2": [
-                "╔══════════╗",
-                "║ ╔══════╗ ║",
-                "╚═╝      ║ ║",
-                "         ║ ║",
-                "╔════════╝ ║",
-                "║ ╔════════╝",
-                "║ ║         ",
-                "║ ║      ╔═╗",
-                "║ ╚══════╝ ║",
-                "╚══════════╝",
-            ],
-            "3": [
-                "╔══════════╗",
-                "║ ╔══════╗ ║",
-                "╚═╝      ║ ║",
-                "         ║ ║",
-                "  ╔══════╝ ║",
-                "  ╚══════╗ ║",
-                "         ║ ║",
-                "╔═╗      ║ ║",
-                "║ ╚══════╝ ║",
-                "╚══════════╝",
-            ],
-            "4": [
-                "╔══╗    ╔══╗",
-                "║ ╔╝    ╚╗ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ╚══════╝ ║",
-                "╚════════╗ ║",
-                "         ║ ║",
-                "         ║ ║",
-                "       ╔═╝ ║",
-                "       ╚═══╝",
-            ],
-            "5": [
-                "╔══════════╗",
-                "║ ╔══════╗ ║",
-                "║ ║      ╚═╝",
-                "║ ║         ",
-                "║ ╚════════╗",
-                "╚════════╗ ║",
-                "         ║ ║",
-                "╔═╗      ║ ║",
-                "║ ╚══════╝ ║",
-                "╚══════════╝",
-            ],
-            "6": [
-                "╔══════════╗",
-                "║ ╔══════╗ ║",
-                "║ ║      ╚═╝",
-                "║ ║         ",
-                "║ ╚════════╗",
-                "║ ╔══════╗ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ╚══════╝ ║",
-                "╚══════════╝",
-            ],
-            "7": [
-                "╔══════════╗",
-                "║ ╔══════╗ ║",
-                "╚═╝      ║ ║",
-                "         ║ ║",
-                "         ║ ║",
-                "         ║ ║",
-                "         ║ ║",
-                "         ║ ║",
-                "        ╔╝ ║",
-                "        ╚══╝",
-            ],
-            "8": [
-                "╔══════════╗",
-                "║ ╔══════╗ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ╚══════╝ ║",
-                "║ ╔══════╗ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ╚══════╝ ║",
-                "╚══════════╝",
-            ],
-            "9": [
-                "╔══════════╗",
-                "║ ╔══════╗ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ╚══════╝ ║",
-                "╚════════╗ ║",
-                "         ║ ║",
-                "╔═╗      ║ ║",
-                "║ ╚══════╝ ║",
-                "╚══════════╝",
-            ],
-            ":": [
-                "            ",
-                "   ╔════╗   ",
-                "   ║ ╔╗ ║   ",
-                "   ║ ╚╝ ║   ",
-                "   ╚════╝   ",
-                "   ╔════╗   ",
-                "   ║ ╔╗ ║   ",
-                "   ║ ╚╝ ║   ",
-                "   ╚════╝   ",
-                "            ",
-            ],
-            " ": ["  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  "],
-            "M": [
-                "╔════╗ ╔════╗",
-                "║ ╔╗ ║ ║ ╔╗ ║",
-                "║ ║║ ║ ║ ║║ ║",
-                "║ ║║ ╚═╝ ║║ ║",
-                "║ ║╚╗   ╔╝║ ║",
-                "║ ║ ╚═══╝ ║ ║",
-                "║ ║       ║ ║",
-                "║ ║       ║ ║",
-                "║ ║       ║ ║",
-                "╚═╝       ╚═╝",
-            ],
-            "A": [
-                "╔══════════╗",
-                "║ ╔══════╗ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ╚══════╝ ║",
-                "║ ╔══════╗ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "╚═╝      ╚─╝",
-            ],
-            "P": [
-                "╔══════════╗",
-                "║ ╔══════╗ ║",
-                "║ ║      ║ ║",
-                "║ ║      ║ ║",
-                "║ ╚══════╝ ║",
-                "║ ╔════════╝",
-                "║ ║         ",
-                "║ ║         ",
-                "║ ║         ",
-                "╚═╝         ",
-            ],
-        },
-    },
-}
+
 class ClockBox(BaseBox):
     _VALID_STYLES = {"single", "double"}
     _VALID_SIZES = {"small", "medium", "big"}
+    _BOOLEAN_KEYS = (
+        "clock_24h",
+        "show_seconds",
+        "show_am_pm",
+        "blink_colon",
+        "show_date",
+    )
 
-    def __init__(
-        self,
-        stdscr,
-        config,
-        boxes_config,
-        colors,
-        renderer,
-    ):
-        super().__init__(
-            stdscr,
-            config,
-            boxes_config,
-            colors,
-            renderer,
-        )
-        self.style = config.get("clock_style", "single")
-        self.size = config.get("clock_size", "medium")
-        self.clock_24h = config.get("clock_24h", True)
-        self.show_seconds = config.get("show_seconds", True)
-        self.show_am_pm = config.get("show_am_pm", True)
-        self.blink_colon = config.get("blink_colon", False)
-        self.show_date = config.get("show_date", False)
+    def __init__(self, stdscr, config, boxes_config, colors, renderer):
+        super().__init__(stdscr, config, boxes_config, colors, renderer)
+        self.options = ClockOptions.from_config(config)
 
-    # ------------------------------------------------------------------
-    # Plug-and-play config validator (called by config.py automatically)
-    # ------------------------------------------------------------------
+        # Building the geometry reformats the time and rebuilds every glyph
+        # pattern, but the display only changes once a second (digits and
+        # the blinking colon both flip on second boundaries), so cache it.
+        self._geometry_key = None
+        self._geometry_cache = None
+
     @classmethod
     def validate_config(cls, item, path):
-        from ...app.config import _bool, _enum  # noqa: PLC0415
-
         if "clock_style" in item:
-            _enum(
-                item["clock_style"],
-                f"{path}.clock_style",
-                cls._VALID_STYLES,
-            )
+            validation.enum(item["clock_style"], f"{path}.clock_style", cls._VALID_STYLES)
         if "clock_size" in item:
-            _enum(
-                item["clock_size"],
-                f"{path}.clock_size",
-                cls._VALID_SIZES,
-            )
-        for key in (
-            "clock_24h",
-            "show_seconds",
-            "show_am_pm",
-            "blink_colon",
-            "show_date",
-        ):
+            validation.enum(item["clock_size"], f"{path}.clock_size", cls._VALID_SIZES)
+        for key in cls._BOOLEAN_KEYS:
             if key in item:
-                _bool(item[key], f"{path}.{key}")
+                validation.boolean(item[key], f"{path}.{key}")
 
-    @staticmethod
-    def _blank(pattern):
-        return [" " * len(line) for line in pattern]
-
-    def _time_text(self, now):
-        hour = "%H" if self.clock_24h else "%I"
-        seconds = ":%S" if self.show_seconds else ""
-        text = time.strftime(
-            f"{hour}:%M{seconds}",
-            now,
-        )
-        if not self.clock_24h and self.show_am_pm:
-            text = f"{text} {time.strftime('%p', now)}"
-        return text
-
-    def _patterns(self, text, now):
-        digits = DIGITS[self.style][self.size]
-        show_colon = (
-            not self.blink_colon
-            or now.tm_sec % 2 == 0
-        )
-        blank_digit = self._blank(digits["0"])
-        return [
-            self._blank(digits[char])
-            if char == ":" and not show_colon
-            else digits.get(char, blank_digit)
-            for char in text
-        ]
-
-    def _geometry(self, now):
-        text = self._time_text(now)
-        patterns = self._patterns(text, now)
-        spacing = 2 if self.size == "big" else 1
-        clock_width = sum(len(pattern[0]) for pattern in patterns)
-        clock_width += (len(patterns) - 1) * spacing
-        height = len(patterns[0])
-        date = time.strftime("%A, %b %d %Y", now) if self.show_date else ""
-        return (
-            text,
-            patterns,
-            spacing,
-            clock_width,
-            height,
-            date,
-        )
+    def _cached_geometry(self):
+        now = time.localtime()
+        key = (now.tm_hour, now.tm_min, now.tm_sec)
+        if key != self._geometry_key:
+            self._geometry_key = key
+            self._geometry_cache = build_geometry(now, self.options)
+        return self._geometry_cache
 
     def dimensions(self):
-        (
-            _,
-            _,
-            _,
-            clock_width,
-            clock_height,
-            date,
-        ) = self._geometry(time.localtime())
-        return max(clock_width, len(date)), clock_height + bool(date) * 2
+        geometry = self._cached_geometry()
+        return geometry.content_width, geometry.content_height
 
-    def draw_content(
-        self,
-        x,
-        y,
-        width,
-        height,
-    ):
-        text, patterns, spacing, clock_width, clock_height, date = self._geometry(
-            time.localtime()
-        )
-        content_height = clock_height + bool(date) * 2
-        x_start = x + max(0, (width - clock_width) // 2)
-        y_start = y + max(0, (height - content_height) // 2)
+    def draw_content(self, x, y, width, height):
+        geometry = self._cached_geometry()
+        x_start = x + max(0, (width - geometry.width) // 2)
+        y_start = y + max(0, (height - geometry.content_height) // 2)
+
         offset = 0
-        for char_index, char in enumerate(text):
-            pattern = patterns[char_index]
+        for char, pattern in zip(geometry.text, geometry.patterns):
             color = self.colors.accent if char == ":" else self.colors.text
             for row, line in enumerate(pattern):
                 self.renderer.draw(x_start + offset, y_start + row, line, color)
-            offset += len(pattern[0]) + spacing
-        if date:
-            date_x = x + max(0, (width - len(date)) // 2)
+            offset += len(pattern[0]) + geometry.spacing
+
+        if geometry.date:
+            date_x = x + max(0, (width - len(geometry.date)) // 2)
             self.renderer.draw(
                 date_x,
-                y_start + clock_height + 1,
-                date,
+                y_start + geometry.height + 1,
+                geometry.date,
                 self.colors.text,
             )
-
-    def update(self):
-        pass
-
-    def close(self):
-        pass

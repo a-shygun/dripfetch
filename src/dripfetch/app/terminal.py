@@ -34,13 +34,17 @@ class Renderer:
     """Virtual screen buffer that flushes only the cells changed since the
     previous frame, as raw truecolor ANSI escapes.
 
-    Every call to begin() rebuilds `current` as the target state for this
-    frame (background everywhere, then draw() calls paint over it). end()
-    then diffs `current` against `previous` (what was actually last written
-    to the terminal) and only emits escapes for cells that differ. This
-    keeps per-frame output proportional to what's moving on screen (rain
-    drops, a blinking clock colon) rather than the full width * height of
-    the terminal, which matters a lot at ~100 updates/sec.
+    Every call to begin() starts a fresh `current` dict; draw() calls paint
+    into it. Only cells that were actually drawn to end up in `current` --
+    unlike the previous implementation, begin() does *not* pre-populate an
+    entry for every (x, y) on the screen first. At ~100 updates/sec that
+    prefill-the-whole-screen-then-diff-the-whole-screen approach cost two
+    full width*height passes every single frame, even when nothing was
+    moving (e.g. rain at intensity 0 with a handful of static boxes).
+    `previous` is kept sparse too: it only ever holds cells that differ
+    from blank background, so its size -- and therefore the cost of
+    begin()/draw()/end() -- stays proportional to how much is actually on
+    screen (rain drops, box glyphs) instead of the full terminal size.
     """
 
     def __init__(self, stdscr, background):
@@ -61,33 +65,46 @@ class Renderer:
         self.previous.clear()
         with suppress(curses.error):
             curses.resizeterm(height, width)
+        # Cells that never get an explicit draw() call -- the empty
+        # space around/between boxes -- are never represented in
+        # `current`/`previous` at all now (see class docstring), so
+        # nothing in the normal per-cell diff ever paints them. Without
+        # this, those cells simply show whatever the terminal emulator's
+        # own default background is instead of the app's configured
+        # background. Paint the whole physical screen to the configured
+        # background once here, in a single escape sequence, so empty
+        # space is correct from the start; the sparse diff only has to
+        # account for cells that differ from *that* afterwards.
+        self._paint_background()
         return True
 
+    def _paint_background(self):
+        terminal_write(f"{self._background(self.background)}\x1b[2J")
+
     def invalidate(self):
-        """Force the next end() call to repaint every cell, ignoring the
-        diff. Use this whenever the physical terminal may have fallen out
-        of sync with what we last wrote -- e.g. curses' own resize
-        handling (curses.resizeterm above) can flush output of its own to
-        the terminal *after* our end() write for that frame, silently
-        overwriting cells we believe are already correct. Cells that get
-        redrawn every frame regardless (rain, a ticking clock) self-heal
-        from that; static ones (a box's empty interior) don't, since our
-        diff sees current == previous and skips rewriting them -- even
-        though the actual terminal no longer matches. Clearing `previous`
-        here makes every cell look "changed" for one frame, so the whole
-        screen gets repainted from scratch instead of trusting that
-        stale assumption.
+        """Force the next end() call to repaint every drawn cell and make
+        sure nothing stale is left over from outside our own tracked
+        cells -- e.g. curses' own resize handling (curses.resizeterm
+        above) can flush output of its own to the terminal *after* our
+        end() write for that frame, silently leaving cells we believe
+        are blank actually showing old content.
+
+        Previously this was done by clearing `previous` and relying on
+        begin() re-filling `current` with a background entry for every
+        cell on the next frame, forcing a full width*height repaint
+        through Python. Since `current`/`previous` are sparse now (see
+        the class docstring), that trick no longer reaches blank cells.
+        Repainting the physical background directly is simpler, cheaper,
+        and gives the same guarantee: after this, every untouched cell
+        genuinely shows the configured background, so the sparse diff in
+        end() stays correct.
         """
+        self._paint_background()
         self.previous = {}
 
     def begin(self):
         resized = self.resize()
-        background = self.background
-        self.current = {
-            (x, y): (" ", None, background)
-            for y in range(self.height)
-            for x in range(self.width)
-        }
+        self.current = {}
         return resized
 
     def draw(self, x, y, text, foreground=None, background=None):
@@ -118,13 +135,33 @@ class Renderer:
     def end(self):
         previous = self.previous
         current = self.current
-        changed = [key for key, cell in current.items() if previous.get(key) != cell]
+        blank = (" ", None, self.background)
+
+        # Cells drawn this frame that weren't already showing exactly
+        # this -- `previous.get(key, blank)` treats "not in previous" as
+        # blank, since previous only tracks non-blank cells.
+        changed = {
+            key: cell
+            for key, cell in current.items()
+            if previous.get(key, blank) != cell
+        }
+
+        # Cells that had content last frame but weren't redrawn this
+        # frame (e.g. a raindrop that moved on) need to be cleared.
+        for key in previous:
+            if key not in current:
+                changed[key] = blank
+
         if changed:
             output = []
             foreground = background = object()  # sentinels: match no real color
             last_x = last_y = -1
-            for x, y in changed:
-                character, color, bg = current[(x, y)]
+            # Sorted so consecutive same-row writes can skip the cursor
+            # move most of the time, same as the old row-major ordering
+            # that fell out of the previous full-grid prefill for free.
+            for (x, y), (character, color, bg) in sorted(
+                changed.items(), key=lambda item: (item[0][1], item[0][0])
+            ):
                 if y != last_y or x != last_x:
                     output.append(f"\x1b[{y + 1};{x + 1}H")
                 if color != foreground:
@@ -138,7 +175,9 @@ class Renderer:
                 last_y = y
             output.append("\x1b[0m")
             terminal_write("".join(output))
-        self.previous = current
+
+        # Only remember non-blank cells -- see the class docstring.
+        self.previous = {key: cell for key, cell in current.items() if cell != blank}
 
 
 def terminal_write(sequence):

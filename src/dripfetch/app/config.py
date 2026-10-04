@@ -128,7 +128,7 @@ def validate_config(config):
     ):
         if key in rain:
             _weighted_list(rain[key], f"rain.{key}", value_type)
-    from ..box.manager import validate_box_config  # noqa: PLC0415
+    from ..box.validation import validate_box_config  # noqa: PLC0415
 
     validate_box_config(config)
 

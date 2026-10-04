@@ -18,7 +18,7 @@ rain:
   # Number of raindrops spawned in the terminal.
   # Higher values create denser rain and higher CPU usage.
   # Set to 0 to disable rain.
-  intensity: 200
+  intensity: 100
 
   # Characters used for each raindrop. One is picked at random per drop.
   # Uncomment more entries (or add your own) to mix multiple characters.

@@ -1,77 +1,11 @@
-import random
 import time
-from collections import deque
-from dataclasses import dataclass, field
 
-from ..app.terminal import RGBA, parse_color
-
-BOX_PADDING = 2
-SPAWN_INTERVAL = 5
-
-SPLASH_CHARS = "˙.,'`"
-SPLASH_DURATION = 0.25  # seconds
-
-ACCEL_RATE = 0.15  # fraction of base_speed shed per second of falling
-ACCEL_FLOOR = 0.15  # never faster than this fraction of base_speed
-
-
-@dataclass
-class Drop:
-    x: int
-    head_y: int = -1
-    speed: float = 50
-    length: int = 5
-    color: str = "#FFFFFF"
-    character: str = "│"
-    path: deque = field(default_factory=deque)
-    redirect_target: int | None = None
-    active: bool = True
-    last_move: float = field(
-        default_factory=time.monotonic
-    )
-    spawned_at: float = field(
-        default_factory=time.monotonic
-    )
-    base_speed: float = 50
-
-
-@dataclass
-class Splash:
-    x: int
-    y: int
-    character: str
-    born: float = field(default_factory=time.monotonic)
-
-
-class ColorManager:
-    def __init__(self):
-        self.colors = {}
-
-    def create_pairs(self, colors):
-        self.colors = {
-            color: parse_color(color)
-            for color in colors
-        }
-
-    def attribute(self, color, tail, length, background):
-        base = self.colors.get(
-            color,
-            parse_color("#FFFFFF"),
-        )
-
-        brightness = 1.0 if length <= 1 else max(0.0, min(1.0, 1 - tail / (length - 1)))
-
-        # Fade toward the configured background color rather than
-        # toward black, so a drop's tail blends into the canvas behind
-        # it instead of always sinking to darkness -- this matters for
-        # light/white backgrounds, where fading to black looks like the
-        # tail is punching a hole in the scene.
-        return RGBA(
-            round(background.r + (base.r - background.r) * brightness),
-            round(background.g + (base.g - background.g) * brightness),
-            round(background.b + (base.b - background.b) * brightness),
-            base.a,
-        )
+from ..app.terminal import parse_color
+from .colors import ColorManager
+from .constants import SPLASH_DURATION
+from .physics import update_drop
+from .rendering import draw_drop, draw_splashes
+from .spawning import Spawner
 
 
 class Rain:
@@ -96,8 +30,6 @@ class Rain:
         self.colors = ColorManager()
 
         self.paused_at = None
-        self.spawned = 0
-        self.spawned_at = time.monotonic()
 
         # Drop (and splash) tails fade toward this color instead of
         # black. Matches the same background the Renderer fills the
@@ -107,41 +39,20 @@ class Rain:
             config.get("background", "#000000FF")
         )
 
-        rain = config.get("rain", {})
+        rain_config = config.get("rain", {})
 
-        self.collision = rain.get(
+        self.collision = rain_config.get(
             "collision",
             True,
         )
 
-        self.intensity = max(
-            0,
-            float(rain.get("intensity", 1)),
-        )
-
-        self.characters = rain.get(
-            "character",
-            "│",
-        )
-
-        self.speeds = rain.get(
-            "speeds",
-            [],
-        )
-
-        self.lengths = rain.get(
-            "lengths",
-            [],
-        )
-
-        self.rain_colors = rain.get(
-            "colors",
-            [],
-        )
+        # Spawning (weighted character/speed/length/color choice and
+        # spawn-rate timing) lives in its own object -- see spawning.py.
+        self.spawner = Spawner(rain_config)
 
         # Effects are opt-in and default to off, so nothing changes
         # unless one is explicitly flipped on in config.
-        effects = rain.get("effects", {})
+        effects = rain_config.get("effects", {})
 
         self.fx_acceleration = bool(
             effects.get("acceleration", False)
@@ -152,7 +63,7 @@ class Rain:
 
         colors = dict.fromkeys(
             color
-            for _, color in self.rain_colors
+            for _, color in self.spawner.rain_colors
         )
 
         self.colors.create_pairs(
@@ -160,338 +71,29 @@ class Rain:
         )
 
     # ------------------------------------------------------------------
-    # Collision
-    # ------------------------------------------------------------------
-
-    def _collision(
-        self,
-        x,
-        old_y,
-        new_y,
-        bounds,
-    ):
-        if not self.collision:
-            return None
-
-        for (
-            left,
-            top,
-            right,
-            bottom,
-        ) in bounds:
-            if (
-                old_y < top <= new_y
-                and left <= x <= right
-            ):
-                targets = (
-                    left - BOX_PADDING,
-                    right + BOX_PADDING,
-                )
-
-                target = min(
-                    targets,
-                    key=lambda value: abs(x - value),
-                )
-
-                return target, top
-
-        return None
-
-    @staticmethod
-    def _inside_box(x, y, bounds):
-        return any(
-            left <= x <= right
-            and top <= y <= bottom
-            for (
-                left,
-                top,
-                right,
-                bottom,
-            ) in bounds
-        )
-
-    # ------------------------------------------------------------------
-    # Spawning
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _choose(values, default):
-        if not values:
-            return default
-
-        return random.choices(
-            [value for _, value in values],
-            [weight for weight, _ in values],
-        )[0]
-
-    @staticmethod
-    def _choose_character(characters):
-        if isinstance(characters, str):
-            return characters
-
-        if not characters:
-            return "│"
-
-        return random.choice(characters)
-
-    def _new_drop(self):
-        if self.width <= 0:
-            return None
-
-        length = max(
-            1,
-            int(
-                self._choose(
-                    self.lengths,
-                    5,
-                )
-            ),
-        )
-
-        speed = max(
-            1,
-            float(
-                self._choose(
-                    self.speeds,
-                    50,
-                )
-            ),
-        )
-
-        return Drop(
-            x=random.randrange(self.width),
-            head_y=-1,
-            speed=speed,
-            length=length,
-            color=self._choose(
-                self.rain_colors,
-                "#FFFFFF",
-            ),
-            character=self._choose_character(
-                self.characters
-            ),
-            path=deque(maxlen=length),
-            base_speed=speed,
-        )
-
-    def _spawn(self, now):
-        if not self.intensity or not self.width:
-            self.spawned_at = now
-            return
-
-        elapsed = min(
-            now - self.spawned_at,
-            0.25,
-        )
-
-        self.spawned_at = now
-        self.spawned += (
-            elapsed
-            * self.intensity
-            / SPAWN_INTERVAL
-        )
-
-        count = int(self.spawned)
-        self.spawned -= count
-
-        for _ in range(count):
-            drop = self._new_drop()
-
-            if drop is not None:
-                self.drops.append(drop)
-
-    # ------------------------------------------------------------------
-    # Movement
-    # ------------------------------------------------------------------
-
-    def _move_horizontal(self, drop):
-        target = drop.redirect_target
-
-        if target is None:
-            return
-
-        if drop.x == target:
-            drop.redirect_target = None
-            return
-
-        direction = (
-            1 if target > drop.x else -1
-        )
-
-        drop.x += direction
-
-        # A box can touch the terminal edge. Let the drop finish its
-        # deflection beyond that edge instead of stopping at the last
-        # visible column and colliding with the same side forever.
-        if not 0 <= drop.x < self.width:
-            drop.active = False
-            drop.redirect_target = None
-            return
-
-        if drop.character in ("│", "|"):
-            drop.path.append(
-                (
-                    drop.x,
-                    drop.head_y,
-                    "─",
-                )
-            )
-
-            if drop.x == target:
-                drop.path[-1] = (
-                    drop.x,
-                    drop.head_y,
-                    "┐"
-                    if direction > 0
-                    else "┌",
-                )
-
-                drop.redirect_target = None
-
-            return
-
-        drop.path.append(
-            (
-                drop.x,
-                drop.head_y,
-                drop.character,
-            )
-        )
-
-        if drop.x == target:
-            drop.redirect_target = None
-
-    def _move_down(self, drop, bounds):
-        old_x = drop.x
-        old_y = drop.head_y
-
-        hit = self._collision(
-            old_x,
-            old_y,
-            old_y + 1,
-            bounds,
-        )
-
-        if hit:
-            target, top = hit
-
-            drop.head_y = top - 1
-            drop.redirect_target = target
-
-            if drop.character in ("│", "|"):
-                corner = (
-                    "└"
-                    if target > old_x
-                    else "┘"
-                )
-
-                if drop.path:
-                    drop.path[-1] = (
-                        old_x,
-                        drop.head_y,
-                        corner,
-                    )
-                else:
-                    drop.path.append(
-                        (
-                            old_x,
-                            drop.head_y,
-                            corner,
-                        )
-                    )
-
-            return
-
-        drop.head_y += 1
-
-        drop.path.append(
-            (
-                drop.x,
-                drop.head_y,
-                drop.character,
-            )
-        )
-
-    # ------------------------------------------------------------------
     # Update
     # ------------------------------------------------------------------
-
-    def _current_speed(self, drop, now):
-        if not self.fx_acceleration:
-            return drop.speed
-
-        age = max(0.0, now - drop.spawned_at)
-        factor = max(
-            ACCEL_FLOOR,
-            1 - age * ACCEL_RATE,
-        )
-
-        return max(5.0, drop.base_speed * factor)
-
-    def _update_drop(
-        self,
-        drop,
-        now,
-        bounds,
-    ):
-        if not drop.active:
-            return
-
-        speed = self._current_speed(drop, now)
-
-        interval = max(
-            1.0,
-            float(speed),
-        ) / 1000
-
-        elapsed = now - drop.last_move
-
-        if elapsed < interval:
-            return
-
-        steps = min(
-            max(
-                1,
-                int(elapsed / interval),
-            ),
-            8,
-        )
-
-        for _ in range(steps):
-            if drop.redirect_target is None:
-                self._move_down(
-                    drop,
-                    bounds,
-                )
-            else:
-                self._move_horizontal(
-                    drop
-                )
-
-            if (
-                drop.head_y - drop.length
-                >= self.height
-            ):
-                drop.active = False
-                break
-
-        drop.last_move = now
-
     def update(self):
         now = time.monotonic()
         bounds = (
             self.box.get_box_bounds_list()
         )
 
-        self._spawn(now)
+        self.drops.extend(
+            self.spawner.spawn(now, self.width)
+        )
 
         alive = []
 
         for drop in self.drops:
-            self._update_drop(
+            update_drop(
                 drop,
                 now,
                 bounds,
+                self.width,
+                self.height,
+                self.collision,
+                self.fx_acceleration,
             )
 
             if drop.active:
@@ -509,104 +111,35 @@ class Rain:
     # ------------------------------------------------------------------
     # Rendering
     # ------------------------------------------------------------------
-
-    def _draw_drop(self, drop, bounds):
-        if not drop.active:
-            return
-
-        for tail, (
-            x,
-            y,
-            character,
-        ) in enumerate(
-            reversed(drop.path)
-        ):
-            if tail >= drop.length:
-                break
-
-            if not (
-                0 <= x < self.width
-                and 0 <= y < self.height
-            ):
-                continue
-
-            if (
-                not self.collision
-                and self._inside_box(
-                    x,
-                    y,
-                    bounds,
-                )
-            ):
-                continue
-
-            self.renderer.draw(
-                x,
-                y,
-                character,
-                self.colors.attribute(
-                    drop.color,
-                    tail,
-                    drop.length,
-                    self.background,
-                ),
-            )
-
-    def _draw_splashes(self):
-        if not self.splashes:
-            return
-
-        now = time.monotonic()
-        base = parse_color("#FFFFFF")
-        background = self.background
-
-        for splash in self.splashes:
-            if not (
-                0 <= splash.x < self.width
-                and 0 <= splash.y < self.height
-            ):
-                continue
-
-            age = now - splash.born
-
-            if age >= SPLASH_DURATION:
-                continue
-
-            fade = max(0.0, 1 - age / SPLASH_DURATION)
-
-            # Same background-relative fade as drops: a fresh splash is
-            # full white, and as it ages it blends into the background
-            # color instead of fading to black.
-            self.renderer.draw(
-                splash.x,
-                splash.y,
-                splash.character,
-                RGBA(
-                    round(background.r + (base.r - background.r) * fade),
-                    round(background.g + (base.g - background.g) * fade),
-                    round(background.b + (base.b - background.b) * fade),
-                    base.a,
-                ),
-            )
-
     def draw(self):
         bounds = (
             self.box.get_box_bounds_list()
         )
 
         for drop in self.drops:
-            self._draw_drop(
+            draw_drop(
+                self.renderer,
                 drop,
                 bounds,
+                self.width,
+                self.height,
+                self.collision,
+                self.colors,
+                self.background,
             )
 
         if self.fx_splash:
-            self._draw_splashes()
+            draw_splashes(
+                self.renderer,
+                self.splashes,
+                self.width,
+                self.height,
+                self.background,
+            )
 
     # ------------------------------------------------------------------
     # Pause / resume
     # ------------------------------------------------------------------
-
     def pause(self):
         if self.paused_at is None:
             self.paused_at = time.monotonic()
@@ -627,7 +160,7 @@ class Rain:
         for splash in self.splashes:
             splash.born += delay
 
-        self.spawned_at += delay
+        self.spawner.spawned_at += delay
         self.paused_at = None
 
     def reset_timing(self):
@@ -637,13 +170,11 @@ class Rain:
             drop.last_move = now
             drop.spawned_at = now
 
-        self.spawned_at = now
-        self.spawned = 0
+        self.spawner.reset_timing(now)
 
     # ------------------------------------------------------------------
     # Resize / cleanup
     # ------------------------------------------------------------------
-
     def resize(self):
         height, width = (
             self.stdscr.getmaxyx()
