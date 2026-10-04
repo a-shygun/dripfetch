@@ -1,6 +1,6 @@
 # Maintainer: Amir Shygun <a-shygun@users.noreply.github.com>
 pkgname=dripfetch
-pkgver=0.3.0
+pkgver=0.4.0
 pkgrel=1
 pkgdesc="Customizable terminal system information dashboard with animated rain"
 arch=('any')
@@ -9,7 +9,7 @@ license=('MIT')
 depends=('python>=3.12' 'python-psutil' 'python-ruamel-yaml')
 makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('7d1fd4c013b496de1a011334bf9c89ecee04679aebf2332c9636a02ece55dd37')
+sha256sums=('e92ebe96c31330c265bc18a1d6eab1b41ab695e6207c2dc79efe5f6bd988a90c')
 
 build() {
   cd "$srcdir/$pkgname-$pkgver"
