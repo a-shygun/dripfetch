@@ -22,4 +22,11 @@ class Dripfetch < Formula
   def install
     virtualenv_install_with_resources
   end
+
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/dripfetch --version")
+    assert_match "clock", shell_output("#{bin}/dripfetch --list-boxes")
+  end
 end
+
