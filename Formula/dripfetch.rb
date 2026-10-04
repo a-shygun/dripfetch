@@ -14,7 +14,7 @@ class Dripfetch < Formula
     sha256 "0746f5f8d406af344fd547f1c8daa5f5c33dbc293bb8d6a16d80b4bb88f59372"
   end
 
-  resource "ruamel.yaml" do
+  resource "ruamel-yaml" do
     url "https://files.pythonhosted.org/packages/c7/3b/ebda527b56beb90cb7652cb1c7e4f91f48649fbcd8d2eb2fb6e77cd3329b/ruamel_yaml-0.19.1.tar.gz"
     sha256 "53eb66cd27849eff968ebf8f0bf61f46cdac2da1d1f3576dd4ccee9b25c31993"
   end
@@ -23,10 +23,8 @@ class Dripfetch < Formula
     virtualenv_install_with_resources
   end
 
-
   test do
     assert_match version.to_s, shell_output("#{bin}/dripfetch --version")
     assert_match "clock", shell_output("#{bin}/dripfetch --list-boxes")
   end
 end
-
