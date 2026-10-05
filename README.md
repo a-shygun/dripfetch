@@ -49,6 +49,45 @@ python3Packages.buildPythonApplication {
 }
 ```
 
+Temporarily build and run via nix flakes (no install)
+```sh
+nix run github:a-shygun/dripfetch
+```
+
+Install via nix flakes
+
+1. Add flake input
+
+flake.nix
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    dripfetch = {
+      url = "github:a-shygun/dripfetch";
+    };
+  };
+}
+```
+
+2. Install via system config or home-manager
+
+configuration.nix
+```nix
+environment.systemPackages = with pkgs; [
+  inputs.dripfetch.packages.${pkgs.stdenv.hostPlatform.system}.default
+];
+```
+
+or
+
+home.nix
+```nix
+home.packages = with pkgs; [
+  inputs.dripfetch.packages.${pkgs.stdenv.hostPlatform.system}.default
+];
+```
+
 ## Usage
 
 ```bash
