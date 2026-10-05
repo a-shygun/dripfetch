@@ -36,6 +36,19 @@ yay -S dripfetch                             # Arch (AUR)
 
 ### Nix
 
+`psutil` and `ruamel.yaml` are **runtime** dependencies, not native build inputs. Put them in `dependencies` (or `propagatedBuildInputs`), not `nativeBuildInputs`, or the installed command fails with `ModuleNotFoundError`:
+
+```nix
+python3Packages.buildPythonApplication {
+  pname = "dripfetch";
+  version = "0.4.0";
+  pyproject = true;
+  src = ./.;
+  build-system = [ python3Packages.setuptools ];
+  dependencies = with python3Packages; [ psutil ruamel-yaml ];
+}
+```
+
 Temporarily build and run via nix flakes (no install)
 ```sh
 nix run github:a-shygun/dripfetch
