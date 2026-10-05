@@ -75,7 +75,7 @@ flake.nix
 configuration.nix
 ```nix
 environment.systemPackages = with pkgs; [
-  inputs.dripfetch.packages"${pkgs.stdenv.hostPlatform.system}".default
+  inputs.dripfetch.packages.${pkgs.stdenv.hostPlatform.system}.default
 ];
 ```
 
@@ -84,7 +84,7 @@ or
 home.nix
 ```nix
 home.packages = with pkgs; [
-  inputs.dripfetch.packages"${pkgs.stdenv.hostPlatform.system}".default
+  inputs.dripfetch.packages.${pkgs.stdenv.hostPlatform.system}.default
 ];
 ```
 
