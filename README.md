@@ -30,6 +30,37 @@ brew install a-shygun/dripfetch/dripfetch    # Homebrew
 yay -S dripfetch                             # Arch (AUR)
 ```
 
+### GitHub release downloads
+
+Each [GitHub Release](https://github.com/a-shygun/dripfetch/releases) includes these files (`0.5.0` below is an example; use the version you want):
+
+- `dripfetch_0.5.0_linux_amd64.deb` — Debian or Ubuntu on x86_64
+- `dripfetch_0.5.0_linux_arm64.deb` — Debian or Ubuntu on ARM64
+- `dripfetch_0.5.0_macos_x86_64.tar.gz` — macOS on Intel
+- `dripfetch_0.5.0_macos_arm64.tar.gz` — macOS on Apple Silicon
+- `dripfetch-0.5.0-py3-none-any.whl` and `dripfetch-0.5.0.tar.gz` — Python wheel and source distribution
+- `dripfetch_checksums.txt` — SHA-256 hashes for the downloadable package files
+
+On Debian or Ubuntu, download the `.deb` matching your CPU architecture, then install it from the folder where it was downloaded:
+
+```sh
+sudo apt install ./dripfetch_0.5.0_linux_amd64.deb
+```
+
+Use the `linux_arm64` filename on an ARM64 machine. The command installs the `dripfetch` program, which you can then run from a terminal.
+
+On macOS, download the archive matching your Mac's processor, then extract and install the command into your personal `~/.local/bin` directory:
+
+```sh
+tar -xzf dripfetch_0.5.0_macos_arm64.tar.gz
+mkdir -p "$HOME/.local/bin"
+install -m 755 dripfetch "$HOME/.local/bin/dripfetch"
+```
+
+Use the `macos_x86_64` filename on an Intel Mac. If `~/.local/bin` is not on your `PATH`, add it in your shell configuration. To install the Python wheel instead, use `python -m pip install ./dripfetch-0.5.0-py3-none-any.whl` in a virtual environment.
+
+To check a download, calculate its SHA-256 hash with `sha256sum <filename>` on Linux or `shasum -a 256 <filename>` on macOS, then compare it with the matching filename in `dripfetch_checksums.txt`.
+
 `bash install.sh` sets up a local virtual environment in `~/dripfetch` and links `dripfetch` into `~/.local/bin`; `bash uninstall.sh` removes it and keeps your config.
 
 **Uninstall:** `pipx uninstall dripfetch` · `python -m pip uninstall dripfetch` · `brew uninstall dripfetch` · `yay -R dripfetch`
@@ -43,7 +74,7 @@ python3Packages.buildPythonApplication {
   pname = "dripfetch";
   version = "0.4.0";
   pyproject = true;
-  src = ./.;
+  src = ./.; # when evaluated from the repository root
   build-system = [ python3Packages.setuptools ];
   dependencies = with python3Packages; [ psutil ruamel-yaml ];
 }
@@ -51,7 +82,7 @@ python3Packages.buildPythonApplication {
 
 Temporarily build and run via nix flakes (no install)
 ```sh
-nix run github:a-shygun/dripfetch
+nix run github:a-shygun/dripfetch?dir=packaging/nix
 ```
 
 Install via nix flakes
@@ -64,7 +95,7 @@ flake.nix
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     dripfetch = {
-      url = "github:a-shygun/dripfetch";
+      url = "github:a-shygun/dripfetch?dir=packaging/nix";
     };
   };
 }
@@ -213,6 +244,7 @@ src/dripfetch/
 ├── rain/     manager, spawning, physics, rendering, colors, models, constants
 └── assets/   logos/*.txt and configs/*.yaml
 Formula/      Homebrew formula        packaging/arch/  AUR PKGBUILD
+packaging/nix/  Nix flake and package expression
 ```
 
 To add a box type, drop a module with one `BaseBox` subclass into `box/types/`. It is discovered automatically and the module name becomes its `type`. An optional `validate_config(cls, item, path)` classmethod validates its options.

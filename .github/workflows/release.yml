@@ -60,6 +60,139 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+  release_packages:
+    name: Build ${{ matrix.platform }} release downloads
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux_amd64
+            deb_arch: amd64
+          - os: ubuntu-22.04-arm
+            platform: linux_arm64
+            deb_arch: arm64
+          - os: macos-15-intel
+            platform: macos_x86_64
+          - os: macos-15
+            platform: macos_arm64
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build standalone command
+        run: |
+          python -m pip install --upgrade pyinstaller
+          python -m pip install .
+          pyinstaller --clean --noconfirm --onefile \
+            --name dripfetch \
+            --collect-all dripfetch \
+            --collect-all ruamel.yaml \
+            --collect-all psutil \
+            --copy-metadata dripfetch \
+            packaging/entrypoint.py
+
+      - name: Package macOS and Linux command archives
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          tar -czf "dist/dripfetch_${version}_${PLATFORM}.tar.gz" -C dist dripfetch
+
+      - name: Package Debian installer
+        if: runner.os == 'Linux'
+        env:
+          DEB_ARCH: ${{ matrix.deb_arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          package_root="$(mktemp -d)"
+          install -D dist/dripfetch "$package_root/usr/bin/dripfetch"
+          install -d "$package_root/DEBIAN"
+          cat > "$package_root/DEBIAN/control" <<EOF
+          Package: dripfetch
+          Version: ${version}
+          Section: utils
+          Priority: optional
+          Architecture: ${DEB_ARCH}
+          Maintainer: Dripfetch maintainers <a-shygun@users.noreply.github.com>
+          Depends: libc6, libncursesw6
+          Description: Customizable terminal system information dashboard with animated rain
+           Dripfetch displays system information, clocks, calendars, weather, text, and network graphs in a terminal.
+          EOF
+          dpkg-deb --root-owner-group --build \
+            "$package_root" "dist/dripfetch_${version}_${PLATFORM}.deb"
+
+      - name: Upload platform downloads
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: dist/dripfetch_*
+          if-no-files-found: error
+
+  create_github_release:
+    name: Create or update GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, release_packages]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Download Python distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: release-assets/
+
+      - name: Download platform downloads
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets/
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+
+          assets = sorted(path for path in Path("release-assets").iterdir() if path.is_file())
+          lines = []
+          for asset in assets:
+              digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+              lines.append(f"{digest}  {asset.name}")
+          (Path("release-assets") / "dripfetch_checksums.txt").write_text(
+              "\n".join(lines) + "\n", encoding="utf-8"
+          )
+          PY
+
+      - name: Create release if needed and upload assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --generate-notes \
+              --title "Dripfetch ${GITHUB_REF_NAME#v}"
+          fi
+          gh release upload "$GITHUB_REF_NAME" release-assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
+
   publish:
     name: Publish to PyPI
     if: startsWith(github.ref, 'refs/tags/v')

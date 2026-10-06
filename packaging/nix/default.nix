@@ -7,9 +7,9 @@
 }:
 buildPythonApplication (final: {
   pname = "dripfetch";
-  version = (lib.importTOML ./pyproject.toml).project.version;
+  version = (lib.importTOML ../../pyproject.toml).project.version;
   pyproject = true;
-  src = ./.;
+  src = ../..;
 
   build-system = [ setuptools ];
 
