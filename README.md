@@ -2,6 +2,13 @@
 
 A customizable terminal dashboard with animated Matrix-style rain. Place system info, logos, clocks, calendars, weather, text, and network graphs anywhere on screen, and tune everything from one YAML file.
 
+[![Build and release](https://github.com/a-shygun/dripfetch/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/a-shygun/dripfetch/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/a-shygun/dripfetch?sort=semver)](https://github.com/a-shygun/dripfetch/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/a-shygun/dripfetch/total?label=downloads)](https://github.com/a-shygun/dripfetch/releases)
+[![PyPI](https://img.shields.io/pypi/v/dripfetch)](https://pypi.org/project/dripfetch/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/github/license/a-shygun/dripfetch)](LICENSE)
+
 <p align="center">
   <img src="docs/dripfetch.gif" alt="Dripfetch demo" width="850">
 </p>
