@@ -255,6 +255,8 @@ packaging/nix/  Nix flake and package expression
 
 To add a box type, drop a module with one `BaseBox` subclass into `box/types/`. It is discovered automatically and the module name becomes its `type`. An optional `validate_config(cls, item, path)` classmethod validates its options.
 
+[![Star History Chart](https://app.repohistory.com/api/svg?repo=a-shygun/dripfetch&type=Date&background=0D1117&color=6278f8)](https://app.repohistory.com/star-history)
+
 ## License
 
 [MIT](LICENSE). Report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
