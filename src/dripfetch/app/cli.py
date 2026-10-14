@@ -272,6 +272,8 @@ def main():
         curses.wrapper(App(config_path).run)
     except (ConfigError, FileNotFoundError, OSError) as exc:
         raise SystemExit(f"error: {exc}") from exc
+    except (KeyboardInterrupt):
+        pass
 
 
 if __name__ == "__main__":
